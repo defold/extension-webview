@@ -1,0 +1,27 @@
+[project]
+title = WebView
+version = 0.1
+dependencies = https://github.com/andsve/dirtylarry/archive/master.zip
+
+[bootstrap]
+main_collection = /main/main.collectionc
+
+[input]
+game_binding = /input/game.input_bindingc
+
+[display]
+width = 640
+height = 960
+
+[physics]
+scale = 0.02
+
+[script]
+shared_state = 1
+
+[android]
+package = com.defoldtest.webview
+
+[ios]
+bundle_identifier = com.defoldtest.webview
+
