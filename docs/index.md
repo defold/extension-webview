@@ -1,65 +1,55 @@
+---
+---
 ## Webview API documentation
 Functions and for creating and controlling webviews to show html pages or
 evaluate javascript. These API:s only exist on mobile platforms.
 
-## Functions
-<ul>
-{% for function in site.data.api %}
-    <li>
-        <h3>{{ function.name }}</h3>
-        {{ function.desc }}
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Parameter</th>
-                    <th>Type</th>
-                    <th>Desc</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for param in function.params %}
-                <tr>
-                    <td>{{ param.name }}</td>
-                    <td>{{ param.type }}</td>
-                    <td>{{ param.desc }}
-                        {% if param.type == "function" %}
-
-                        <br>
-                        <b>({% for sig in param.sig %}
-                        {{ sig.name }}{% unless forloop.last %},{% endunless %}
-                        {% endfor %})</b>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Parameter</th>
-                                    <th>Type</th>
-                                    <th>Desc</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for sig in param.sig %}
-                                <tr>
-                                    <td>{{ sig.name }}</td>
-                                    <td>{{ sig.type }}</td>
-                                    <td>{{ sig.desc }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </li>
+## Constants
+{% for constant in site.data.api.constants %}
+### {{ constant.name }}
+{{ constant.desc }}
 {% endfor %}
-</ul>
 
-<li><b>TYPE:</b> {{ param.type }}<br/>
+## Functions
+{% for function in site.data.api.functions %}
+### {{ function.name }}({% for param in function.params %}{{param.name}}{% unless forloop.last %},{% endunless %}{% endfor %})
+{{ function.desc }}
+<table>
+    <thead>
+        <tr>
+            <th>Parameter</th>
+            <th>Type</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for param in function.params %}
+        <tr>
+            <td>{{ param.name }}</td>
+            <td><code>{{ param.type }}</code></td>
+            <td>{{ param.desc }}
                 {% if param.type == "function" %}
-                    THIS IS A FUNCTION
+                {% include type-function.md params=param.params %}
                 {% endif %}
-                <b>NAME:</b> {{ param.name }}<br/>
-                <b>DESC:</b> {{ param.desc }}</li>
+                {% if param.type == "table" %}
+                {% include type-table.md fields=param.fields %}
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% if function.return %}
+#### Returns
+<code>{{ function.return.type }}</code> {{ function.return.desc }}
+{% endif %}
+{% if function.examples %}
+#### Examples
+{% for example in function.examples %}
+```lua
+{{ example.code }}
+```
+{% endfor %}
+{% endif %}
+---
+{% endfor %}
