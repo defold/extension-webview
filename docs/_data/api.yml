@@ -1,0 +1,49 @@
+- name: webview.create
+  desc: "Creates a webview instance. It can show HTML pages as well as evaluate
+  Javascript. The view remains hidden until the first call. There can exist a
+  maximum of 4 webviews at the same time.
+
+  [icon:ios] On iOS, the callback will never get a
+  `webview.CALLBACK_RESULT_EVAL_ERROR`, due to the iOS SDK implementation."
+  params:
+    - type: function
+      sig:
+        - name: self
+          type: object
+          desc: The calling script
+
+        - name: webview_id
+          type: number
+          desc: The webview id
+
+        - name: request_id
+          type: number
+          desc: The request id
+
+        - name: type
+          type: enum
+          desc: The type of callback
+          options:
+            - webview.CALLBACK_RESULT_URL_OK
+            - webview.CALLBACK_RESULT_URL_ERROR
+            - webview.CALLBACK_RESULT_URL_LOADING
+            - webview.CALLBACK_RESULT_EVAL_OK
+            - webview.CALLBACK_RESULT_EVAL_ERROR
+
+        - name: data
+          type: table
+          desc: A table holding the data
+          fields:
+            - name: url
+              type: string
+              desc: The url used in the webview.open() call. `nil` otherwise.
+            - name: result
+              type: "Holds the result of either: a failed url open, a successful
+                     eval request or a failed eval. `nil` otherwise"
+      name: callback
+      desc: "A callback which receives info about finished requests taking the
+            following parameters"
+  return:
+    type: number
+    desc: The id number of the webview
+
