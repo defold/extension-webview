@@ -9,7 +9,7 @@
     <tbody>
     {% for param in include.params %}
         <tr>
-            <td>{{ param.name }}</td>
+            <td><strong>{{ param.name }}</strong></td>
             <td><code>{{ param.type }}</code></td>
             <td>{{ param.desc }}
 

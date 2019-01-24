@@ -1,4 +1,5 @@
 ---
+layout: default
 ---
 ## Webview API documentation
 Functions and for creating and controlling webviews to show html pages or
@@ -6,13 +7,25 @@ evaluate javascript. These API:s only exist on mobile platforms.
 
 ## Constants
 {% for constant in site.data.api.constants %}
-### {{ constant.name }}
+### <code>{{ constant.name }}</code>
 {{ constant.desc }}
 {% endfor %}
 
 ## Functions
+<table>
+    <tbody>
 {% for function in site.data.api.functions %}
-### {{ function.name }}({% for param in function.params %}{{param.name}}{% unless forloop.last %},{% endunless %}{% endfor %})
+        <tr>
+            <td><a href="#{{ function.name | url_encode }}"><code>{{ function.name }}</code></a></td>
+            <td>{{ function.short_desc }}</td>
+        </tr>
+{% endfor %}
+    </tbody>
+</table>
+
+{% for function in site.data.api.functions %}
+<div class="function-wrap">
+<h3 class="function-header"><a href="#{{ function.name | url_encode }}" id="{{ function.name | url_encode }}"><code>{{ function.name }}({% for param in function.params %}{{param.name}}{% unless forloop.last %}, {% endunless %}{% endfor %})</code></a></h3>
 {{ function.desc }}
 <table>
     <thead>
@@ -25,7 +38,7 @@ evaluate javascript. These API:s only exist on mobile platforms.
     <tbody>
     {% for param in function.params %}
         <tr>
-            <td>{{ param.name }}</td>
+            <td style="text-align: right;"><strong>{{ param.name }}</strong></td>
             <td><code>{{ param.type }}</code></td>
             <td>{{ param.desc }}
                 {% if param.type == "function" %}
@@ -40,16 +53,16 @@ evaluate javascript. These API:s only exist on mobile platforms.
     </tbody>
 </table>
 {% if function.return %}
-#### Returns
-<code>{{ function.return.type }}</code> {{ function.return.desc }}
+<h4>Returns</h4>
+<code class="inline-code-block">{{ function.return.type }}</code> {{ function.return.desc }}
 {% endif %}
 {% if function.examples %}
-#### Examples
+<h4>Examples</h4>
 {% for example in function.examples %}
-```lua
+{% highlight lua %}
 {{ example.code }}
-```
+{% endhighlight %}
 {% endfor %}
 {% endif %}
----
+</div>
 {% endfor %}

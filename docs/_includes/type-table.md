@@ -1,5 +1,5 @@
 <ul>
 {% for field in include.fields %}
-<li><code>{{ field.type }}</code> <strong>{{ field.name }}</strong> - {{ field.desc }}</li>
+<li><strong>{{ field.name }}</strong> <code>{{ field.type }}</code> - {{ field.desc }}</li>
 {% endfor %}
 </ul>
