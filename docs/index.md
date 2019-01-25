@@ -1,10 +1,6 @@
 ---
 layout: default
 ---
-## Webview API documentation
-Functions and for creating and controlling webviews to show html pages or
-evaluate javascript. These API:s only exist on mobile platforms.
-
 ## Constants
 {% for constant in site.data.api.constants %}
 ### <code>{{ constant.name }}</code>

@@ -10,17 +10,23 @@
     <!--[if lt IE 9]>
     <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.min.js"></script>
     <![endif]-->
+    <title>{{ site.title }}</title>
   </head>
   <body>
     <div class="wrapper">
       <header>
-        <h1><a href="{{ site.github.repository_url }}">{{ site.title | default: site.github.repository_name }}</a></h1>
+        <h1>Defold Webview API documentation</h1>
+        <p>Functions for creating and controlling webviews to show HTML pages or
+        evaluate JavaScript. These API:s only exist on mobile platforms.</p>
 
-        <p>{{ site.description | default: site.github.project_tagline }}</p>
+        <p>To use this library in your Defold project, add the following URL to your <code class="inline-code-block">game.project</code> dependencies:
+          <pre>https://github.com/defold/extension-webview/archive/master.zip</pre>
+        </p>
 
-        <a href="{{ site.github.zip_url }}">{{ site.github.zip_url }}</a>
+        <p>The source code can be viewed at: <a href="https://github.com/defold/extension-webview">https://github.com/defold/extension-webview</a></p>
 
       </header>
+      <hr>
       <section>
 
       {{ content }}

@@ -25,3 +25,6 @@ package = com.defoldtest.webview
 [ios]
 bundle_identifier = com.defoldtest.webview
 
+[library]
+include_dirs = webview
+
