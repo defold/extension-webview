@@ -24,6 +24,7 @@ package = com.defoldtest.webview
 
 [ios]
 bundle_identifier = com.defoldtest.webview
+infoplist = /Info.plist
 
 [library]
 include_dirs = webview

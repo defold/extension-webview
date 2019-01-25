@@ -41,7 +41,7 @@ local function window_callback(self, event, data)
     if event == window.WINDOW_EVENT_RESIZED then
         self.width = data.width
         self.height = data.height
-        webview.set_position(self.webview_id, 0, 0, self.width, self.height / 2)
+        webview.set_position(self.webview_id, 0, 0, -1, 300)
     end
 end
 
@@ -52,7 +52,7 @@ function init(self)
     if not webview_available() then return end
 
     self.webview_id = webview.create(webview_callback)
-    webview.set_position(self.webview_id, 0, 0, gui.get_width(), gui.get_height() / 2)
+    webview.set_position(self.webview_id, 0, 0, -1, 300)
 
     self.width = gui.get_width()
     self.height = gui.get_height()
