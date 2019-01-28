@@ -66,7 +66,7 @@ struct WebViewExtensionState
     dmWebView::WebViewInfo  m_Info[dmWebView::MAX_NUM_WEBVIEWS];
     UIWebView*              m_WebViews[dmWebView::MAX_NUM_WEBVIEWS];
     WebViewDelegate*        m_WebViewDelegates[dmWebView::MAX_NUM_WEBVIEWS];
-    dmMutex::Mutex          m_Mutex;
+    dmMutex::HMutex         m_Mutex;
     dmArray<Command>        m_CmdQueue;
 };
 

@@ -78,7 +78,7 @@ struct WebViewExtensionState
     jmethodID               m_SetVisible;
     jmethodID               m_IsVisible;
     jmethodID               m_SetPosition;
-    dmMutex::Mutex          m_Mutex;
+    dmMutex::HMutex         m_Mutex;
     dmArray<Command>        m_CmdQueue;
 };
 
