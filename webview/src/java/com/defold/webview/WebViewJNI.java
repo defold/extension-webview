@@ -300,6 +300,7 @@ public class WebViewJNI {
     private void setVisibleInternal(WebViewInfo info, int visible)
     {
         info.webview.setVisibility((visible != 0) ? View.VISIBLE : View.GONE);
+        info.layout.setVisibility((visible != 0) ? View.VISIBLE : View.GONE);
         if( visible != 0 && info.first == 1 )
         {
             info.first = 0;
