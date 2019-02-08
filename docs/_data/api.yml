@@ -9,11 +9,11 @@ functions:
   - name: webview.create
     short_desc: Creates a webview
     desc: "Creates a webview instance. It can show HTML pages as well as evaluate
-    Javascript. The view remains hidden until the first call. There can exist a
-    maximum of 4 webviews at the same time.
+           Javascript. The view remains hidden until the first call. There can exist a
+           maximum of 4 webviews at the same time.
 
-    [icon:ios] On iOS, the callback will never get a
-    <code>webview.CALLBACK_RESULT_EVAL_ERROR</code>, due to the iOS SDK implementation."
+           On iOS, the callback will never get a `webview.CALLBACK_RESULT_EVAL_ERROR`,
+           due to the iOS SDK implementation."
     params:
       - type: function
         params:
@@ -45,11 +45,11 @@ functions:
             fields:
               - name: url
                 type: string
-                desc: The url used in the <code>webview.open()</code> call. <code>nil</code> otherwise.
+                desc: The url used in the `webview.open()` call. `nil` otherwise.
               - name: result
                 type: string
                 desc: "Holds the result of either: a failed url open, a successful
-                      eval request or a failed eval. <code>nil</code> otherwise."
+                      eval request or a failed eval. `nil` otherwise."
 
         name: callback
         desc: "A callback which receives info about finished requests taking the
@@ -59,28 +59,30 @@ functions:
       desc: The id number of the webview
 
     examples:
-      - code: |-
-              local function webview_callback(self, webview_id, request_id, type, data)
-                  if type == webview.CALLBACK_RESULT_URL_OK then
-                      -- the page is now loaded, let's show it
-                      webview.set_visible(webview_id, 1)
-                  elseif type == webview.CALLBACK_RESULT_URL_ERROR then
-                      print("Failed to load url: " .. data["url"])
-                      print("Error: " .. data["error"])
-                  elseif type == webview.CALLBACK_RESULT_URL_LOADING then
-                      -- a page is loading
-                      -- return false to prevent it from loading
-                      -- return true or nil to continue loading the page
-                      if data.url ~= "https://www.defold.com/" then
-                          return false
-                      end
-                  elseif type == webview.CALLBACK_RESULT_EVAL_OK then
-                      print("Eval ok. Result: " .. data['result'])
-                  elseif type == webview.CALLBACK_RESULT_EVAL_ERROR then
-                      print("Eval not ok. Request # " .. request_id)
-                  end
-              end
-              local webview_id = webview.create(webview_callback)
+      - example: |-
+                 ```lua
+                 local function webview_callback(self, webview_id, request_id, type, data)
+                     if type == webview.CALLBACK_RESULT_URL_OK then
+                         -- the page is now loaded, let's show it
+                         webview.set_visible(webview_id, 1)
+                     elseif type == webview.CALLBACK_RESULT_URL_ERROR then
+                         print("Failed to load url: " .. data["url"])
+                         print("Error: " .. data["error"])
+                     elseif type == webview.CALLBACK_RESULT_URL_LOADING then
+                         -- a page is loading
+                         -- return false to prevent it from loading
+                         -- return true or nil to continue loading the page
+                         if data.url ~= "https://www.defold.com/" then
+                             return false
+                         end
+                     elseif type == webview.CALLBACK_RESULT_EVAL_OK then
+                         print("Eval ok. Result: " .. data['result'])
+                     elseif type == webview.CALLBACK_RESULT_EVAL_ERROR then
+                         print("Eval not ok. Request # " .. request_id)
+                     end
+                 end
+                 local webview_id = webview.create(webview_callback)
+                 ```
 
   - name: webview.destroy
     short_desc: Destroys a webview
@@ -88,11 +90,11 @@ functions:
     params:
       - name: webview_id
         type: number
-        desc: The webview id (returned by the <code>webview.create()</code> call)
+        desc: The webview id (returned by the `webview.create()` call)
 
   - name: webview.open
     short_desc: Open a page using an URL
-    desc: Opens a web page in the webview, using an URL. Once the request is done, the callback (registered in <code>webview.create()</code>) is invoked.
+    desc: Opens a web page in the webview, using an URL. Once the request is done, the callback (registered in `webview.create()`) is invoked.
     params:
       - name: webview_id
         type: number
@@ -108,12 +110,14 @@ functions:
             type: boolean
             desc: If true, the webview will stay hidden (default=false)
     examples:
-      - code: |-
-              local request_id = webview.open(webview_id, "http://www.defold.com", {hidden = true})
+      - example: |-
+                 ```lua
+                 local request_id = webview.open(webview_id, "http://www.defold.com", {hidden = true})
+                 ```
 
   - name: webview.open_raw
     short_desc: Open a page using HTML
-    desc: Opens a web page in the webview, using HTML data. Once the request is done, the callback (registered in <code>webview.create()</code>) is invoked.
+    desc: Opens a web page in the webview, using HTML data. Once the request is done, the callback (registered in `webview.create()`) is invoked.
     params:
       - name: webview_id
         type: number
@@ -123,15 +127,17 @@ functions:
         desc: The HTML data to display
       - name: options
         type: table
-        desc: "A table of options for the request. See <code>webview.open()</code>"
+        desc: "A table of options for the request. See `webview.open()`"
     examples:
-      - code: |-
-              local html = sys.load_resource("/main/data/test.html")
-              local request_id = webview.open_raw(webview_id, html, {hidden = true})
+      - example: |-
+                 ```lua
+                 local html = sys.load_resource("/main/data/test.html")
+                 local request_id = webview.open_raw(webview_id, html, {hidden = true})
+                 ```
 
   - name: webview.eval
     short_desc: Evaluates javascript in a webview
-    desc: Evaluates JavaScript within the context of the currently loaded page (if any). Once the request is done, the callback (registered in <code>webview.create()</code>) is invoked. The callback will get the result in the <code>data["result"]</code> field.
+    desc: Evaluates JavaScript within the context of the currently loaded page (if any). Once the request is done, the callback (registered in `webview.create()`) is invoked. The callback will get the result in the `data["result"]` field.
     params:
       - name: webview_id
         type: number
@@ -143,8 +149,10 @@ functions:
       type: number
       desc: The id number of the request
     examples:
-      - code: |-
-              local request_id = webview.eval(webview_id, "GetMyFormData()")
+      - example: |-
+                 ```lua
+                 local request_id = webview.eval(webview_id, "GetMyFormData()")
+                 ```
 
   - name: webview.set_visible
     short_desc: Shows or hides a webview
@@ -155,7 +163,7 @@ functions:
         desc: The webview id
       - name: visible
         type: number
-        desc: If <code>0</code>, hides the webview. If non zero, shows the view
+        desc: If `0`, hides the webview. If non zero, shows the view
 
   - name: webview.is_visible
     short_desc: Gets the visibility state of the webview
@@ -166,7 +174,7 @@ functions:
         desc: The webview id
     return:
       type: number
-      desc: Returns <code>0</code> if not visible, <code>1</code> if it is visible
+      desc: Returns `0` if not visible, `1` if it is visible
 
   - name: webview.set_position
     short_desc: Sets the position and size of the webview

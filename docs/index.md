@@ -22,7 +22,7 @@ layout: default
 {% for function in site.data.api.functions %}
 <div class="function-wrap">
 <h3 class="function-header"><a href="#{{ function.name | url_encode }}" id="{{ function.name | url_encode }}"><code>{{ function.name }}({% for param in function.params %}{{param.name}}{% unless forloop.last %}, {% endunless %}{% endfor %})</code></a></h3>
-{{ function.desc }}
+{{ function.desc | markdownify }}
 <table>
     <thead>
         <tr>
@@ -36,7 +36,7 @@ layout: default
         <tr>
             <td style="text-align: right;"><strong>{{ param.name }}</strong></td>
             <td><code>{{ param.type }}</code></td>
-            <td>{{ param.desc }}
+            <td>{{ param.desc | markdownify }}
                 {% if param.type == "function" %}
                 {% include type-function.md params=param.params %}
                 {% endif %}
@@ -50,14 +50,12 @@ layout: default
 </table>
 {% if function.return %}
 <h4>Returns</h4>
-<code class="inline-code-block">{{ function.return.type }}</code> {{ function.return.desc }}
+<code class="inline-code-block">{{ function.return.type }}</code> {{ function.return.desc | markdownify }}
 {% endif %}
 {% if function.examples %}
 <h4>Examples</h4>
 {% for example in function.examples %}
-{% highlight lua %}
-{{ example.code }}
-{% endhighlight %}
+{{ example.example | markdownify }}
 {% endfor %}
 {% endif %}
 </div>
