@@ -297,7 +297,7 @@ static dmExtension::Result WebView_Update(dmExtension::Params* params)
     return Platform_Update(params);
 }
 
-DM_DECLARE_EXTENSION(WebViewExt, "WebView", WebView_AppInitialize, WebView_AppFinalize, WebView_Initialize, WebView_Update, 0, WebView_Finalize)
+DM_DECLARE_EXTENSION(WebViewExternal, "WebView", WebView_AppInitialize, WebView_AppFinalize, WebView_Initialize, WebView_Update, 0, WebView_Finalize)
 
 
 } // namespace

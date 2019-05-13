@@ -1,4 +1,4 @@
-extern "C" void WebViewExt()
+extern "C" void WebViewExternal()
 {
 
 }
