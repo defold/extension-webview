@@ -206,9 +206,9 @@ int Platform_SetPosition(lua_State* L, int webview_id, int x, int y, int width, 
 {
     CHECK_WEBVIEW_AND_RETURN();
     JNIEnv* env = Attach();
-    int visible = env->CallIntMethod(g_WebView.m_WebViewJNI, g_WebView.m_SetPosition, webview_id, x, y, width, height);
+    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_SetPosition, webview_id, x, y, width, height);
     Detach();
-    return visible;
+    return 0;
 }
 
 #undef CHECK_WEBVIEW_AND_RETURN
