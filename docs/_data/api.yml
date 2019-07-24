@@ -61,7 +61,7 @@
       desc: The id number of the webview
 
     examples:
-    - desc: |-
+      - desc: |-
                  ```lua
                  local function webview_callback(self, webview_id, request_id, type, data)
                      if type == webview.CALLBACK_RESULT_URL_OK then
@@ -112,7 +112,7 @@
             type: boolean
             desc: If true, the webview will stay hidden (default=false)
     examples:
-    - desc: |-
+      - desc: |-
                  ```lua
                  local request_id = webview.open(webview_id, "http://www.defold.com", {hidden = true})
                  ```
@@ -132,7 +132,7 @@
         type: table
         desc: "A table of options for the request. See `webview.open()`"
     examples:
-    - desc: |-
+      - desc: |-
                  ```lua
                  local html = sys.load_resource("/main/data/test.html")
                  local request_id = webview.open_raw(webview_id, html, {hidden = true})
@@ -153,7 +153,7 @@
       type: number
       desc: The id number of the request
     examples:
-    - desc: |-
+      - desc: |-
                  ```lua
                  local request_id = webview.eval(webview_id, "GetMyFormData()")
                  ```
