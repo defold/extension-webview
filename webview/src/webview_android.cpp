@@ -24,11 +24,11 @@ enum CommandType
     CMD_LOADING,
 };
 
-struct Command
+struct WebViewCommand
 {
-    Command()
+    WebViewCommand()
     {
-        memset(this, 0, sizeof(*this));
+        memset(this, 0, sizeof(WebViewCommand));
     }
     CommandType m_Type;
     int         m_WebViewID;
@@ -79,7 +79,7 @@ struct WebViewExtensionState
     jmethodID               m_IsVisible;
     jmethodID               m_SetPosition;
     dmMutex::HMutex         m_Mutex;
-    dmArray<Command>        m_CmdQueue;
+    dmArray<WebViewCommand> m_CmdQueue;
 };
 
 WebViewExtensionState g_WebView;
@@ -221,9 +221,9 @@ static char* CopyString(JNIEnv* env, jstring s)
     return copy;
 }
 
-static void QueueCommand(Command* cmd)
+static void QueueCommand(WebViewCommand* cmd)
 {
-    dmMutex::ScopedLock lk(g_WebView.m_Mutex);
+    DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
     if (g_WebView.m_CmdQueue.Full())
     {
         g_WebView.m_CmdQueue.OffsetCapacity(8);
@@ -238,7 +238,7 @@ extern "C" {
 
 JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onPageFinished(JNIEnv* env, jobject, jstring url, jint webview_id, jint request_id)
 {
-    Command cmd;
+    WebViewCommand cmd;
     cmd.m_Type = CMD_LOAD_OK;
     cmd.m_WebViewID = webview_id;
     cmd.m_RequestID = request_id;
@@ -248,7 +248,7 @@ JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onPageFinished(JNIEnv*
 
 JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onReceivedError(JNIEnv* env, jobject, jstring url, jint webview_id, jint request_id, jstring errorMessage)
 {
-    Command cmd;
+    WebViewCommand cmd;
     cmd.m_Type = CMD_LOAD_ERROR;
     cmd.m_WebViewID = webview_id;
     cmd.m_RequestID = request_id;
@@ -259,7 +259,7 @@ JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onReceivedError(JNIEnv
 
 JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onEvalFinished(JNIEnv* env, jobject, jstring result, jint webview_id, jint request_id)
 {
-    Command cmd;
+    WebViewCommand cmd;
     cmd.m_Type = CMD_EVAL_OK;
     cmd.m_WebViewID = webview_id;
     cmd.m_RequestID = request_id;
@@ -270,7 +270,7 @@ JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onEvalFinished(JNIEnv*
 
 JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onEvalFailed(JNIEnv* env, jobject, jstring error, jint webview_id, jint request_id)
 {
-    Command cmd;
+    WebViewCommand cmd;
     cmd.m_Type = CMD_EVAL_ERROR;
     cmd.m_WebViewID = webview_id;
     cmd.m_RequestID = request_id;
@@ -281,7 +281,7 @@ JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onEvalFailed(JNIEnv* e
 
 JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onPageLoading(JNIEnv* env, jobject, jstring url, jint webview_id, jint request_id)
 {
-    Command cmd;
+    WebViewCommand cmd;
     cmd.m_Type = CMD_LOADING;
     cmd.m_WebViewID = webview_id;
     cmd.m_RequestID = request_id;
@@ -298,10 +298,10 @@ dmExtension::Result Platform_Update(dmExtension::Params* params)
     if (g_WebView.m_CmdQueue.Empty())
         return dmExtension::RESULT_OK; // avoid a lock (~300us on iPhone 4s)
 
-    dmMutex::ScopedLock lk(g_WebView.m_Mutex);
+    DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
     for (uint32_t i=0; i != g_WebView.m_CmdQueue.Size(); ++i)
     {
-        const Command& cmd = g_WebView.m_CmdQueue[i];
+        const WebViewCommand& cmd = g_WebView.m_CmdQueue[i];
 
         dmWebView::CallbackInfo cbinfo;
         switch (cmd.m_Type)
@@ -430,10 +430,10 @@ dmExtension::Result Platform_Finalize(dmExtension::Params* params)
         }
     }
 
-    dmMutex::ScopedLock lk(g_WebView.m_Mutex);
+    DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
     for (uint32_t i=0; i != g_WebView.m_CmdQueue.Size(); ++i)
     {
-        const Command& cmd = g_WebView.m_CmdQueue[i];
+        const WebViewCommand& cmd = g_WebView.m_CmdQueue[i];
         if (cmd.m_Url) {
             free((void*)cmd.m_Url);
         }
