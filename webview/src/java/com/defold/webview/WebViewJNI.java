@@ -279,6 +279,7 @@ public class WebViewJNI {
 
         WebSettings webSettings = info.webview.getSettings();
         webSettings.setJavaScriptEnabled(true);
+        webSettings.setAllowFileAccessFromFileURLs(true);
 
         info.webview.addJavascriptInterface(info.webviewClient, JS_NAMESPACE);
 
