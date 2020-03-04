@@ -385,6 +385,7 @@ public class WebViewJNI {
             public void run() {
                 WebViewJNI.this.infos[webview_id].webviewClient.reset(request_id);
                 WebViewJNI.this.infos[webview_id].webviewChromeClient.reset(request_id);
+                WebViewJNI.this.infos[webview_id].webviewClient.setContinueLoadingUrl(url);
                 WebViewJNI.this.infos[webview_id].webview.loadUrl(url);
                 setVisibleInternal(WebViewJNI.this.infos[webview_id], hidden != 0 ? 0 : 1);
             }
