@@ -118,7 +118,7 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
     return webview_id;
 }
 
-static void DestroyWebView(int webview_id)
+static int DestroyWebView(int webview_id)
 {
     CHECK_WEBVIEW_AND_RETURN();
     JNIEnv* env = Attach();
@@ -126,6 +126,7 @@ static void DestroyWebView(int webview_id)
     Detach();
     ClearWebViewInfo(&g_WebView.m_Info[webview_id]);
     g_WebView.m_Used[webview_id] = false;
+    return 0;
 }
 
 int Platform_Destroy(lua_State* L, int webview_id)
