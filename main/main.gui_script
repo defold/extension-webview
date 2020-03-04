@@ -63,7 +63,7 @@ function on_input(self, action_id, action)
     dirtylarry:button("button_open", action_id, action, function()
         if not webview_available() then return end
 
-        webview.open(self.webview_id, "http://www.google.com")
+        webview.open(self.webview_id, "https://www.google.com")
     end)
 
     dirtylarry:button("button_show", action_id, action, function()
