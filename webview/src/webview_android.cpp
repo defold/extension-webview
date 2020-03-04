@@ -120,16 +120,16 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
 
 static void DestroyWebView(int webview_id)
 {
+    CHECK_WEBVIEW_AND_RETURN();
+    JNIEnv* env = Attach();
+    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_Destroy, webview_id);
+    Detach();
     ClearWebViewInfo(&g_WebView.m_Info[webview_id]);
     g_WebView.m_Used[webview_id] = false;
 }
 
 int Platform_Destroy(lua_State* L, int webview_id)
 {
-    CHECK_WEBVIEW_AND_RETURN();
-    JNIEnv* env = Attach();
-    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_Destroy, webview_id);
-    Detach();
     DestroyWebView(webview_id);
     return 0;
 }
