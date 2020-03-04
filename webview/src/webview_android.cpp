@@ -159,6 +159,12 @@ int Platform_ContinueOpen(lua_State* L, int webview_id, int request_id, const ch
     return request_id;
 }
 
+int Platform_CancelOpen(lua_State* L, int webview_id, int request_id, const char* url)
+{
+    // no-op on Android
+    return request_id;
+}
+
 int Platform_OpenRaw(lua_State* L, int webview_id, const char* html, dmWebView::RequestInfo* options)
 {
     CHECK_WEBVIEW_AND_RETURN();

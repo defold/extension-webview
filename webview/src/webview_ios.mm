@@ -8,6 +8,7 @@
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <WebKit/WebKit.h>
 
 #include "webview_common.h"
 
@@ -30,18 +31,12 @@ struct Command
     const char* m_Url;
 };
 
-/*
- * NOTES:
- * webViewDidFinishLoad seems to be invoked once per iframe and hence potentially
- * mulitple times. Therefore, we keep the callback and replace it whenever a new
- * load() is invoked
- */
-
-@interface WebViewDelegate : UIViewController <UIWebViewDelegate>
+@interface WebViewDelegate : UIViewController <WKNavigationDelegate>
 {
     @public int m_WebViewID;
     @public int m_RequestID;
-    @public NSString *m_ContinueLoadingUrl;
+    @public NSString *m_PendingUrl;
+    @public void (^m_DecisionHandler)(WKNavigationActionPolicy);
 }
 @end
 
@@ -64,7 +59,7 @@ struct WebViewExtensionState
     }
 
     dmWebView::WebViewInfo  m_Info[dmWebView::MAX_NUM_WEBVIEWS];
-    UIWebView*              m_WebViews[dmWebView::MAX_NUM_WEBVIEWS];
+    WKWebView*              m_WebViews[dmWebView::MAX_NUM_WEBVIEWS];
     WebViewDelegate*        m_WebViewDelegates[dmWebView::MAX_NUM_WEBVIEWS];
     dmMutex::HMutex         m_Mutex;
     dmArray<Command>        m_CmdQueue;
@@ -75,12 +70,20 @@ WebViewExtensionState g_WebView;
 
 @implementation WebViewDelegate
 
-- (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
 {
-    NSString *url = request.URL.absoluteString;
-    if (m_ContinueLoadingUrl && [m_ContinueLoadingUrl isEqualToString:url]) {
-        return true;
+    // cancel existing decision handler
+    // if this happens it means that we have navigated to a new page
+    // before the previous callback completed
+    // if we don't make a decision we'll get an error
+    if (m_DecisionHandler) {
+        m_DecisionHandler(WKNavigationActionPolicyCancel);
+        m_DecisionHandler = NULL;
     }
+
+    NSString *url = navigationAction.request.URL.absoluteString;
+    m_PendingUrl = url;
+    m_DecisionHandler = decisionHandler;
 
     dmWebView::CallbackInfo cbinfo;
     cbinfo.m_Info = &g_WebView.m_Info[m_WebViewID];
@@ -90,33 +93,30 @@ WebViewExtensionState g_WebView;
     cbinfo.m_Type = dmWebView::CALLBACK_RESULT_URL_LOADING;
     cbinfo.m_Result = 0;
     RunCallback(&cbinfo);
-    return false;
 }
 
-- (void)webViewDidFinishLoad:(UIWebView *)webView
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation
 {
     dmWebView::CallbackInfo cbinfo;
     cbinfo.m_Info = &g_WebView.m_Info[m_WebViewID];
     cbinfo.m_WebViewID = m_WebViewID;
     cbinfo.m_RequestID = m_RequestID;
-    cbinfo.m_Url = [webView.request.URL.absoluteString UTF8String];
+    cbinfo.m_Url = [webView.URL.absoluteString UTF8String];
     cbinfo.m_Type = dmWebView::CALLBACK_RESULT_URL_OK;
     cbinfo.m_Result = 0;
     RunCallback(&cbinfo);
-    m_ContinueLoadingUrl = NULL;
 }
 
-- (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error
+- (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error
 {
     dmWebView::CallbackInfo cbinfo;
     cbinfo.m_Info = &g_WebView.m_Info[m_WebViewID];
     cbinfo.m_WebViewID = m_WebViewID;
     cbinfo.m_RequestID = m_RequestID;
-    cbinfo.m_Url = [webView.request.URL.absoluteString UTF8String];
+    cbinfo.m_Url = [webView.URL.absoluteString UTF8String];
     cbinfo.m_Type = dmWebView::CALLBACK_RESULT_URL_ERROR;
     cbinfo.m_Result = [error.localizedDescription UTF8String];
     RunCallback(&cbinfo);
-    m_ContinueLoadingUrl = NULL;
 }
 
 @end
@@ -166,15 +166,18 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
 
     UIScreen* screen = [UIScreen mainScreen];
 
-    UIWebView* view = [[UIWebView alloc] initWithFrame:screen.bounds];
-    view.suppressesIncrementalRendering = YES;
-    WebViewDelegate* delegate = [WebViewDelegate alloc];
-    delegate->m_WebViewID = webview_id;
-    delegate->m_RequestID = 0;
-    view.delegate = delegate;
+    WKWebViewConfiguration *configuration = [[WKWebViewConfiguration alloc] init];
+    WKWebView *view = [[WKWebView alloc] initWithFrame:screen.bounds configuration:configuration];
+
+    WebViewDelegate* navigationDelegate = [WebViewDelegate alloc];
+    navigationDelegate->m_WebViewID = webview_id;
+    navigationDelegate->m_RequestID = 0;
+    navigationDelegate->m_PendingUrl = NULL;
+    navigationDelegate->m_DecisionHandler = NULL;
+    view.navigationDelegate = navigationDelegate;
 
     g_WebView.m_WebViews[webview_id] = view;
-    g_WebView.m_WebViewDelegates[webview_id] = delegate;
+    g_WebView.m_WebViewDelegates[webview_id] = navigationDelegate;
 
     UIView * topView = [[[[UIApplication sharedApplication] keyWindow] subviews] lastObject];
     [topView addSubview:view];
@@ -223,30 +226,41 @@ int Platform_OpenRaw(lua_State* L, int webview_id, const char* html, dmWebView::
 int Platform_ContinueOpen(lua_State* L, int webview_id, int request_id, const char* url)
 {
     CHECK_WEBVIEW_AND_RETURN();
+    WebViewDelegate* delegate = g_WebView.m_WebViewDelegates[webview_id];
+    if ([delegate->m_PendingUrl isEqualToString:[NSString stringWithUTF8String: url]]) {
+        delegate->m_DecisionHandler(WKNavigationActionPolicyAllow);
+        delegate->m_DecisionHandler = NULL;
+    }
+    return request_id;
+}
 
-    NSURL* ns_url = [NSURL URLWithString: [NSString stringWithUTF8String: url]];
-    NSURLRequest* request = [NSURLRequest requestWithURL: ns_url];
-    g_WebView.m_WebViewDelegates[webview_id]->m_ContinueLoadingUrl = ns_url.absoluteString;
-    [g_WebView.m_WebViews[webview_id] loadRequest:request];
+int Platform_CancelOpen(lua_State* L, int webview_id, int request_id, const char* url)
+{
+    CHECK_WEBVIEW_AND_RETURN();
+    WebViewDelegate* delegate = g_WebView.m_WebViewDelegates[webview_id];
+    if ([delegate->m_PendingUrl isEqualToString:[NSString stringWithUTF8String: url]]) {
+        delegate->m_DecisionHandler(WKNavigationActionPolicyCancel);
+        delegate->m_DecisionHandler = NULL;
+    }
     return request_id;
 }
 
 int Platform_Eval(lua_State* L, int webview_id, const char* code)
 {
     CHECK_WEBVIEW_AND_RETURN();
-    NSString* res = [g_WebView.m_WebViews[webview_id] stringByEvaluatingJavaScriptFromString: [NSString stringWithUTF8String: code]];
-
     int request_id = ++g_WebView.m_WebViewDelegates[webview_id]->m_RequestID;
 
-    // Delay this a bit (on the main thread), so that we can return the request_id from this function,
-    // before calling the callback
-    Command cmd;
-    cmd.m_Type = (res != nil) ? CMD_EVAL_OK : CMD_EVAL_ERROR;
-    cmd.m_WebViewID = webview_id;
-    cmd.m_RequestID = request_id;
-    cmd.m_Url = 0;
-    cmd.m_Data = (void*) ((res != nil) ? CopyString(res) : "Error string unavailable on iOS");
-    QueueCommand(&cmd);
+    [g_WebView.m_WebViews[webview_id] evaluateJavaScript:[NSString stringWithUTF8String: code] completionHandler:^(NSObject *resultObject, NSError *error)
+    {
+        NSString *result = [NSString stringWithFormat:@"%@", resultObject];
+        Command cmd;
+        cmd.m_Type = (result != nil) ? CMD_EVAL_OK : CMD_EVAL_ERROR;
+        cmd.m_WebViewID = webview_id;
+        cmd.m_RequestID = request_id;
+        cmd.m_Url = 0;
+        cmd.m_Data = (void*) ((result != nil) ? CopyString(result) : "Error string unavailable on iOS");
+        QueueCommand(&cmd);
+    }];
 
     return request_id;
 }

@@ -1,6 +1,19 @@
 local dirtylarry = require("dirtylarry.dirtylarry")
 
+HTML = [[
+<html>
+<head>
+    <title>Defold webview</title>
+</head>
+<body>
+Hello World
+</body>
+</html>
+]]
+
+
 local function webview_callback(self, webview_id, request_id, type, data)
+    print("webview_callback", webview_id, request_id)
     if type == webview.CALLBACK_RESULT_URL_OK then
         print("CALLBACK_RESULT_URL_OK")
 
@@ -63,9 +76,21 @@ function on_input(self, action_id, action)
     dirtylarry:button("button_open", action_id, action, function()
         if not webview_available() then return end
 
-        webview.open(self.webview_id, "http://www.google.com")
+        webview.open(self.webview_id, "https://www.google.com")
     end)
 
+    dirtylarry:button("button_eval", action_id, action, function()
+        if not webview_available() then return end
+
+        webview.eval(self.webview_id, "1+1")
+    end)
+
+    dirtylarry:button("button_html", action_id, action, function()
+        if not webview_available() then return end
+
+        webview.open_raw(self.webview_id, HTML)
+    end)
+    
     dirtylarry:button("button_show", action_id, action, function()
         if not webview_available() then return end
 

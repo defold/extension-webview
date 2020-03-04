@@ -1,1 +1,10 @@
 name: WebViewExternal
+
+platforms:
+  arm64-ios:
+    context:
+        frameworks: ["WebKit"]
+
+  armv7-ios:
+    context:
+        frameworks: ["WebKit"]
