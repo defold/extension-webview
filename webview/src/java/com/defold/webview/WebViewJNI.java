@@ -116,6 +116,13 @@ public class WebViewJNI {
             reset(-1);
         }
 
+        private String trimTrailingSlash(String url) {
+            if (url.endsWith("/")) {
+                url = url.substring(0, url.length() - 1);
+            }
+            return url;
+        }
+
         public void reset(int request_id)
         {
             this.requestID = request_id;
@@ -126,6 +133,15 @@ public class WebViewJNI {
         // store a url that should be allowed to load
         public void setContinueLoadingUrl(String url) {
             this.continueLoadingUrl = url;
+        }
+
+        // check if a URL has been set as ok to load by the user
+        // (by returning true in the CALLBACK_RESULT_URL_LOADING callback)
+        // note that we trim trailing slashes since a call to load https://www.google.com
+        // will end up as a https://www.google.com/ in the methods we overload below
+        private boolean shouldContinueLoadingUrl(String url) {
+            if (continueLoadingUrl == null) return false;
+            return trimTrailingSlash(continueLoadingUrl).equals(trimTrailingSlash(url));
         }
 
         @Override
@@ -147,7 +163,7 @@ public class WebViewJNI {
             // the continueLoadingUrl value is set as a result of a call to
             // webviewJNI.onPageLoading (see below) which will let the client
             // either allow or block the page from loading
-            if( continueLoadingUrl != null && continueLoadingUrl.equals(url) ) {
+            if( shouldContinueLoadingUrl(url) ) {
                 return false;
             }
             // block the page from loading and ask the client if it should load
@@ -161,7 +177,7 @@ public class WebViewJNI {
             // NOTE! this callback will be called TWICE for errors, see comment above
             // NOTE! this callback will be called once when initially blocked in
             // shouldOverrideUrlLoading and then once more if allowed to load
-            if (!this.hasError && continueLoadingUrl != null && continueLoadingUrl.equals(url)) {
+            if (!this.hasError && shouldContinueLoadingUrl(url)) {
                 continueLoadingUrl = null;
                 webviewJNI.onPageFinished(url, webviewID, requestID);
             }
@@ -369,6 +385,7 @@ public class WebViewJNI {
             public void run() {
                 WebViewJNI.this.infos[webview_id].webviewClient.reset(request_id);
                 WebViewJNI.this.infos[webview_id].webviewChromeClient.reset(request_id);
+                WebViewJNI.this.infos[webview_id].webviewClient.setContinueLoadingUrl(url);
                 WebViewJNI.this.infos[webview_id].webview.loadUrl(url);
                 setVisibleInternal(WebViewJNI.this.infos[webview_id], hidden != 0 ? 0 : 1);
             }
