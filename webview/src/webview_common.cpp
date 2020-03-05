@@ -67,6 +67,9 @@ void RunCallback(CallbackInfo* cbinfo)
             if (lua_isnil(L, 1) || lua_toboolean(L, 1) == 1) {
                Platform_ContinueOpen(L, cbinfo->m_WebViewID, cbinfo->m_RequestID, cbinfo->m_Url);
             }
+            else {
+                Platform_CancelOpen(L, cbinfo->m_WebViewID, cbinfo->m_RequestID, cbinfo->m_Url);
+            }
         }
         lua_pop(L, 1);
     }

@@ -62,6 +62,7 @@ int Platform_Destroy(lua_State* L, int webview_id);
 int Platform_Open(lua_State* L, int webview_id, const char* url, dmWebView::RequestInfo* options);
 int Platform_OpenRaw(lua_State* L, int webview_id, const char* html, dmWebView::RequestInfo* options);
 int Platform_ContinueOpen(lua_State* L, int webview_id, int request_id, const char* url);
+int Platform_CancelOpen(lua_State* L, int webview_id, int request_id, const char* url);
 int Platform_Eval(lua_State* L, int webview_id, const char* code);
 int Platform_SetVisible(lua_State* L, int webview_id, int visible);
 int Platform_IsVisible(lua_State* L, int webview_id);
