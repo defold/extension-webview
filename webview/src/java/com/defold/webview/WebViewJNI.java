@@ -373,6 +373,7 @@ public class WebViewJNI {
             public void run() {
                 WebViewJNI.this.infos[webview_id].webviewClient.reset(request_id);
                 WebViewJNI.this.infos[webview_id].webviewChromeClient.reset(request_id);
+                WebViewJNI.this.infos[webview_id].webviewClient.setContinueLoadingUrl("file:///android_res/");
                 WebViewJNI.this.infos[webview_id].webview.loadDataWithBaseURL("file:///android_res/", html, "text/html", "utf-8", null);
                 setVisibleInternal(WebViewJNI.this.infos[webview_id], hidden != 0 ? 0 : 1);
             }
