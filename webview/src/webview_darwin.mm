@@ -1,4 +1,4 @@
-#if defined(DM_PLATFORM_IOS)
+#if defined(DM_PLATFORM_IOS) || defined(DM_PLATFORM_OSX) 
 
 #include <dmsdk/dlib/array.h>
 #include <dmsdk/dlib/log.h>
@@ -7,8 +7,12 @@
 #include <dmsdk/extension/extension.h>
 
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
 #import <WebKit/WebKit.h>
+
+#if defined(DM_PLATFORM_IOS)
+#import <UIKit/UIKit.h>
+#endif 
+
 
 #include "webview_common.h"
 
@@ -30,8 +34,11 @@ struct Command
     void*       m_Data;
     const char* m_Url;
 };
-
+#if defined(DM_PLATFORM_IOS)
 @interface WebViewDelegate : UIViewController <WKNavigationDelegate>
+#elif defined(DM_PLATFORM_OSX)
+@interface WebViewDelegate : NSViewController <WKNavigationDelegate>
+#endif
 {
     @public int m_WebViewID;
     @public int m_RequestID;
@@ -142,7 +149,6 @@ static void QueueCommand(Command* cmd)
 
 namespace dmWebView
 {
-
 int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
 {
     // Find a free slot
@@ -163,12 +169,17 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
     }
 
     g_WebView.m_Info[webview_id] = *_info;
-
+#if defined(DM_PLATFORM_IOS)
     UIScreen* screen = [UIScreen mainScreen];
 
     WKWebViewConfiguration *configuration = [[WKWebViewConfiguration alloc] init];
     WKWebView *view = [[WKWebView alloc] initWithFrame:screen.bounds configuration:configuration];
+#elif defined(DM_PLATFORM_OSX)
+    NSScreen* screen = [NSScreen mainScreen];
 
+    WKWebViewConfiguration *configuration = [[WKWebViewConfiguration alloc] init];
+    WKWebView *view = [[WKWebView alloc] initWithFrame:screen.visibleFrame configuration:configuration];
+#endif
     WebViewDelegate* navigationDelegate = [WebViewDelegate alloc];
     navigationDelegate->m_WebViewID = webview_id;
     navigationDelegate->m_RequestID = 0;
@@ -178,8 +189,11 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
 
     g_WebView.m_WebViews[webview_id] = view;
     g_WebView.m_WebViewDelegates[webview_id] = navigationDelegate;
-
+#if defined(DM_PLATFORM_IOS)
     UIView * topView = [[[[UIApplication sharedApplication] keyWindow] subviews] lastObject];
+#elif defined(DM_PLATFORM_OSX)
+    NSView * topView = [[[NSApplication sharedApplication] keyWindow] contentView];
+#endif
     [topView addSubview:view];
     view.hidden = TRUE;
 
@@ -281,7 +295,11 @@ int Platform_IsVisible(lua_State* L, int webview_id)
 int Platform_SetPosition(lua_State* L, int webview_id, int x, int y, int width, int height)
 {
     CHECK_WEBVIEW_AND_RETURN();
+    #if defined(DM_PLATFORM_IOS)
     CGRect screenRect = [[UIScreen mainScreen] bounds];
+    #elif defined(DM_PLATFORM_OSX)
+    CGRect screenRect = [[NSScreen mainScreen] visibleFrame];
+    #endif
     g_WebView.m_WebViews[webview_id].frame = CGRectMake(x, y, width >= 0 ? width : screenRect.size.width, height >= 0 ? height : screenRect.size.height);
     return 0;
 }
@@ -379,4 +397,4 @@ dmExtension::Result Platform_Update(dmExtension::Params* params)
 
 } // namespace dmWebView
 
-#endif // DM_PLATFORM_IOS
+#endif // DM_PLATFORM_IOS || DM_PLATFORM_OSX

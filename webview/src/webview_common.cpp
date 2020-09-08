@@ -1,4 +1,4 @@
-#if defined(DM_PLATFORM_ANDROID) || defined(DM_PLATFORM_IOS)
+#if defined(DM_PLATFORM_ANDROID) || defined(DM_PLATFORM_IOS) || defined (DM_PLATFORM_OSX)
 
 #include <assert.h>
 #include <dmsdk/dlib/log.h>
@@ -104,7 +104,7 @@ static int Create(lua_State* L)
     info.m_Self = dmScript::Ref(L, LUA_REGISTRYINDEX);
     info.m_L = dmScript::GetMainThread(L);
 
-    int webview_id = Platform_Create(L, &info);
+    int webview_id = Platform_Create(L, &info); 
     lua_pushnumber(L, webview_id);
 
     assert(top + 1 == lua_gettop(L));

@@ -1,6 +1,10 @@
 name: WebViewExternal
 
 platforms:
+  x86_64-osx:
+    context:
+        frameworks: ["WebKit"]
+
   arm64-ios:
     context:
         frameworks: ["WebKit"]
