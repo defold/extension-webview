@@ -1,5 +1,12 @@
-# extension-webview
+# Defold webview extension
 
-Functions for creating and controlling webviews to show HTML pages or evaluate JavaScript. These API:s only exist on mobile platforms.
+## Installation
+To use this library in your Defold project, add the following URL to your `game.project` dependencies:
 
-Documentation and usage information can be found at: [https://defold.github.io/extension-webview/](https://defold.github.io/extension-webview/)
+https://github.com/defold/extension-webview/archive/master.zip
+
+We recommend using a link to a zip file of a [specific release](https://github.com/defold/extension-webview/releases).
+
+## API reference
+
+https://defold.com/extension-webview/api/
