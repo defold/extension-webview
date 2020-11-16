@@ -3,6 +3,7 @@
 #include <dmsdk/dlib/array.h>
 #include <dmsdk/dlib/log.h>
 #include <dmsdk/dlib/mutex.h>
+#include <dmsdk/graphics/graphics_native.h>
 #include <dmsdk/script/script.h>
 #include <dmsdk/extension/extension.h>
 
@@ -175,10 +176,10 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
     WKWebViewConfiguration *configuration = [[WKWebViewConfiguration alloc] init];
     WKWebView *view = [[WKWebView alloc] initWithFrame:screen.bounds configuration:configuration];
 #elif defined(DM_PLATFORM_OSX)
-    NSScreen* screen = [NSScreen mainScreen];
+    CGRect gameFrame = [dmGraphics::GetNativeOSXNSView() frame];
 
     WKWebViewConfiguration *configuration = [[WKWebViewConfiguration alloc] init];
-    WKWebView *view = [[WKWebView alloc] initWithFrame:screen.visibleFrame configuration:configuration];
+    WKWebView *view = [[WKWebView alloc] initWithFrame:gameFrame configuration:configuration];
 #endif
     WebViewDelegate* navigationDelegate = [WebViewDelegate alloc];
     navigationDelegate->m_WebViewID = webview_id;
@@ -298,7 +299,7 @@ int Platform_SetPosition(lua_State* L, int webview_id, int x, int y, int width, 
     #if defined(DM_PLATFORM_IOS)
     CGRect screenRect = [[UIScreen mainScreen] bounds];
     #elif defined(DM_PLATFORM_OSX)
-    CGRect screenRect = [[NSScreen mainScreen] visibleFrame];
+    CGRect screenRect = [dmGraphics::GetNativeOSXNSView() frame];
     #endif
     g_WebView.m_WebViews[webview_id].frame = CGRectMake(x, y, width >= 0 ? width : screenRect.size.width, height >= 0 ? height : screenRect.size.height);
     return 0;
