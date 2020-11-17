@@ -208,6 +208,7 @@ static void DestroyWebView(int webview_id)
     ClearWebViewInfo(&g_WebView.m_Info[webview_id]);
     [g_WebView.m_WebViews[webview_id] removeFromSuperview];
     [g_WebView.m_WebViews[webview_id] release];
+    g_WebView.m_WebViews[webview_id] = NULL;
 }
 
 int Platform_Destroy(lua_State* L, int webview_id)
