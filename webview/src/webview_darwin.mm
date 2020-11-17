@@ -206,8 +206,15 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
 static void DestroyWebView(int webview_id)
 {
     ClearWebViewInfo(&g_WebView.m_Info[webview_id]);
-    [g_WebView.m_WebViews[webview_id] removeFromSuperview];
-    [g_WebView.m_WebViews[webview_id] release];
+    WKWebView *view = g_WebView.m_WebViews[webview_id];
+    #if defined(DM_PLATFORM_OSX)
+    NSWindow *window = dmGraphics::GetNativeOSXNSWindow();
+    if ([window firstResponder] == view) {
+        [window makeFirstResponder:dmGraphics::GetNativeOSXNSView()];
+    }
+    #endif
+    [view removeFromSuperview];
+    [view release];
     g_WebView.m_WebViews[webview_id] = NULL;
 }
 
