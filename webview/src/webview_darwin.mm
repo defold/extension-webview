@@ -208,6 +208,7 @@ static void DestroyWebView(int webview_id)
     ClearWebViewInfo(&g_WebView.m_Info[webview_id]);
     [g_WebView.m_WebViews[webview_id] removeFromSuperview];
     [g_WebView.m_WebViews[webview_id] release];
+    g_WebView.m_WebViews[webview_id] = NULL;
 }
 
 int Platform_Destroy(lua_State* L, int webview_id)
@@ -301,7 +302,20 @@ int Platform_SetPosition(lua_State* L, int webview_id, int x, int y, int width, 
     #elif defined(DM_PLATFORM_OSX)
     CGRect screenRect = [dmGraphics::GetNativeOSXNSView() frame];
     #endif
-    g_WebView.m_WebViews[webview_id].frame = CGRectMake(x, y, width >= 0 ? width : screenRect.size.width, height >= 0 ? height : screenRect.size.height);
+
+    CGFloat frameWidth = width >= 0 ? width : screenRect.size.width;
+    CGFloat frameHeight = height >= 0 ? height : screenRect.size.height;
+    CGRect frame = CGRectMake(
+        screenRect.origin.x + x,
+        #if defined(DM_PLATFORM_OSX)
+        screenRect.origin.y + screenRect.size.height - frameHeight - y,
+        #else
+        screenRect.origin.y + y,
+        #endif
+        frameWidth,
+        frameHeight
+    );
+    g_WebView.m_WebViews[webview_id].frame = frame;
     return 0;
 }
 
