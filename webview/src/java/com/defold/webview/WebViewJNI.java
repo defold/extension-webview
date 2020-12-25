@@ -411,7 +411,7 @@ public class WebViewJNI {
             public void run() {
                 WebViewJNI.this.infos[webview_id].webviewClient.reset(request_id);
                 WebViewJNI.this.infos[webview_id].webviewChromeClient.reset(request_id);
-                String javascript = String.format("javascript:%s.returnResultToJava(eval(\"%s\"))", JS_NAMESPACE, code);
+                String javascript = String.format("javascript:%s.returnResultToJava(eval(\"%s\"))", JS_NAMESPACE, JSONValue.escape(code));
                 WebViewJNI.this.infos[webview_id].webview.loadUrl(javascript);
             }
         });
