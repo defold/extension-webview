@@ -191,7 +191,7 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
     g_WebView.m_WebViews[webview_id] = view;
     g_WebView.m_WebViewDelegates[webview_id] = navigationDelegate;
 #if defined(DM_PLATFORM_IOS)
-    UIView * topView = [[[[UIApplication sharedApplication] keyWindow] subviews] lastObject];
+    UIView * topView = [[[[UIApplication sharedApplication] keyWindow] rootViewController] view];
 #elif defined(DM_PLATFORM_OSX)
     NSView * topView = [[[NSApplication sharedApplication] keyWindow] contentView];
 #endif
