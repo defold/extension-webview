@@ -10,9 +10,9 @@ The WebView extension provides a unified API to load and display web pages as ov
 ## Installing the extension
 To use this library in your Defold project, add the following URL to your `game.project` dependencies:
 
-https://github.com/defold/extension-websocket/archive/master.zip
+https://github.com/defold/extension-webview/archive/master.zip
 
-We recommend using a link to a zip file of a [specific release](https://github.com/defold/extension-websocket/releases).
+We recommend using a link to a zip file of a [specific release](https://github.com/defold/extension-webview/releases).
 
 
 ## Opening a WebView

@@ -3,6 +3,7 @@
 #include <dmsdk/dlib/array.h>
 #include <dmsdk/dlib/log.h>
 #include <dmsdk/dlib/mutex.h>
+#include <dmsdk/graphics/graphics_native.h>
 #include <dmsdk/script/script.h>
 #include <dmsdk/extension/extension.h>
 
@@ -175,10 +176,10 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
     WKWebViewConfiguration *configuration = [[WKWebViewConfiguration alloc] init];
     WKWebView *view = [[WKWebView alloc] initWithFrame:screen.bounds configuration:configuration];
 #elif defined(DM_PLATFORM_OSX)
-    NSScreen* screen = [NSScreen mainScreen];
+    CGRect gameFrame = [dmGraphics::GetNativeOSXNSView() frame];
 
     WKWebViewConfiguration *configuration = [[WKWebViewConfiguration alloc] init];
-    WKWebView *view = [[WKWebView alloc] initWithFrame:screen.visibleFrame configuration:configuration];
+    WKWebView *view = [[WKWebView alloc] initWithFrame:gameFrame configuration:configuration];
 #endif
     WebViewDelegate* navigationDelegate = [WebViewDelegate alloc];
     navigationDelegate->m_WebViewID = webview_id;
@@ -190,7 +191,7 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
     g_WebView.m_WebViews[webview_id] = view;
     g_WebView.m_WebViewDelegates[webview_id] = navigationDelegate;
 #if defined(DM_PLATFORM_IOS)
-    UIView * topView = [[[[UIApplication sharedApplication] keyWindow] subviews] lastObject];
+    UIView * topView = [[[[UIApplication sharedApplication] keyWindow] rootViewController] view];
 #elif defined(DM_PLATFORM_OSX)
     NSView * topView = [[[NSApplication sharedApplication] keyWindow] contentView];
 #endif
@@ -205,8 +206,16 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
 static void DestroyWebView(int webview_id)
 {
     ClearWebViewInfo(&g_WebView.m_Info[webview_id]);
-    [g_WebView.m_WebViews[webview_id] removeFromSuperview];
-    [g_WebView.m_WebViews[webview_id] release];
+    WKWebView *view = g_WebView.m_WebViews[webview_id];
+    #if defined(DM_PLATFORM_OSX)
+    NSWindow *window = dmGraphics::GetNativeOSXNSWindow();
+    if ([window firstResponder] == view) {
+        [window makeFirstResponder:dmGraphics::GetNativeOSXNSView()];
+    }
+    #endif
+    [view removeFromSuperview];
+    [view release];
+    g_WebView.m_WebViews[webview_id] = NULL;
 }
 
 int Platform_Destroy(lua_State* L, int webview_id)
@@ -298,9 +307,22 @@ int Platform_SetPosition(lua_State* L, int webview_id, int x, int y, int width, 
     #if defined(DM_PLATFORM_IOS)
     CGRect screenRect = [[UIScreen mainScreen] bounds];
     #elif defined(DM_PLATFORM_OSX)
-    CGRect screenRect = [[NSScreen mainScreen] visibleFrame];
+    CGRect screenRect = [dmGraphics::GetNativeOSXNSView() frame];
     #endif
-    g_WebView.m_WebViews[webview_id].frame = CGRectMake(x, y, width >= 0 ? width : screenRect.size.width, height >= 0 ? height : screenRect.size.height);
+
+    CGFloat frameWidth = width >= 0 ? width : screenRect.size.width;
+    CGFloat frameHeight = height >= 0 ? height : screenRect.size.height;
+    CGRect frame = CGRectMake(
+        screenRect.origin.x + x,
+        #if defined(DM_PLATFORM_OSX)
+        screenRect.origin.y + screenRect.size.height - frameHeight - y,
+        #else
+        screenRect.origin.y + y,
+        #endif
+        frameWidth,
+        frameHeight
+    );
+    g_WebView.m_WebViews[webview_id].frame = frame;
     return 0;
 }
 
