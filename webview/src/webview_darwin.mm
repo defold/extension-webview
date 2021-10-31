@@ -139,7 +139,7 @@ static char* CopyString(NSString* s)
 
 static void QueueCommand(Command* cmd)
 {
-    dmMutex::ScopedLock lk(g_WebView.m_Mutex);
+    DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
     if (g_WebView.m_CmdQueue.Full())
     {
         g_WebView.m_CmdQueue.OffsetCapacity(8);
@@ -355,7 +355,7 @@ dmExtension::Result Platform_Finalize(dmExtension::Params* params)
         }
     }
 
-    dmMutex::ScopedLock lk(g_WebView.m_Mutex);
+    DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
     for (uint32_t i=0; i != g_WebView.m_CmdQueue.Size(); ++i)
     {
         const Command& cmd = g_WebView.m_CmdQueue[i];
@@ -371,12 +371,18 @@ dmExtension::Result Platform_Finalize(dmExtension::Params* params)
 dmExtension::Result Platform_Update(dmExtension::Params* params)
 {
     if (g_WebView.m_CmdQueue.Empty())
-        return dmExtension::RESULT_OK; // avoid a lock (~300us on iPhone 4s)
-
-    dmMutex::ScopedLock lk(g_WebView.m_Mutex);
-    for (uint32_t i=0; i != g_WebView.m_CmdQueue.Size(); ++i)
     {
-        const Command& cmd = g_WebView.m_CmdQueue[i];
+        return dmExtension::RESULT_OK; // avoid a lock (~300us on iPhone 4s)
+    }
+
+    dmArray<Command> tmp;
+    {
+        DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
+        tmp.Swap(g_WebView.m_CmdQueue);
+    }
+    for (uint32_t i=0; i != tmp.Size(); ++i)
+    {
+        const Command& cmd = tmp[i];
 
         dmWebView::CallbackInfo cbinfo;
         switch (cmd.m_Type)
@@ -411,7 +417,6 @@ dmExtension::Result Platform_Update(dmExtension::Params* params)
             free(cmd.m_Data);
         }
     }
-    g_WebView.m_CmdQueue.SetSize(0);
     return dmExtension::RESULT_OK;
 }
 
