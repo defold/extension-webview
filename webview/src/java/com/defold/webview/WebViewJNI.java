@@ -15,6 +15,7 @@ import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.WindowInsetsController;
 import android.widget.LinearLayout;
 import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
@@ -309,6 +310,12 @@ public class WebViewJNI {
         info.windowParams.width = WindowManager.LayoutParams.MATCH_PARENT;
         info.windowParams.height = WindowManager.LayoutParams.MATCH_PARENT;
         info.windowParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+        if (Build.VERSION.SDK_INT < 30) {
+            info.windowParams.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE;
+        }
+        if (Build.VERSION.SDK_INT >= 28) {
+            info.windowParams.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        }
 
         info.layout.setLayoutParams(info.windowParams);
         return info;
@@ -323,6 +330,11 @@ public class WebViewJNI {
             info.first = 0;
             WindowManager wm = activity.getWindowManager();
             wm.addView(info.layout, info.windowParams);
+
+            if (Build.VERSION.SDK_INT >= 30) {
+                WindowInsetsController windowInsetsController = info.layout.getWindowInsetsController();
+                windowInsetsController.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
         }
     }
 
