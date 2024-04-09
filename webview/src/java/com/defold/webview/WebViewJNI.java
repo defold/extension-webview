@@ -256,8 +256,8 @@ public class WebViewJNI {
                                                 | View.SYSTEM_UI_FLAG_FULLSCREEN
                                                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
         }
-        if (Build.VERSION.SDK_INT >= 30) {
-            info.windowParams.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        if (Build.VERSION.SDK_INT >= 28) {
+            info.windowParams.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         }
 
         info.layout.setLayoutParams(info.windowParams);
