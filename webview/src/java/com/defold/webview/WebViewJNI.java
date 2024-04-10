@@ -250,7 +250,7 @@ public class WebViewJNI {
         info.windowParams.y = WindowManager.LayoutParams.MATCH_PARENT;
         info.windowParams.width = WindowManager.LayoutParams.MATCH_PARENT;
         info.windowParams.height = WindowManager.LayoutParams.MATCH_PARENT;
-        info.windowParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+        info.windowParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE; // Fix navigation bar visible briefly when hiding/showing
         info.windowParams.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING;
         if (Build.VERSION.SDK_INT < 30) {
             if (immersiveMode) {
@@ -286,6 +286,10 @@ public class WebViewJNI {
             info.first = 0;
             WindowManager wm = activity.getWindowManager();
             wm.addView(info.layout, info.windowParams);
+
+            // Fix navigation bar visible briefly when hiding/showing
+            info.windowParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+            wm.updateViewLayout(info.layout, info.windowParams);
 
             if (Build.VERSION.SDK_INT >= 30) {
                 WindowInsetsController windowInsetsController = info.layout.getWindowInsetsController();
