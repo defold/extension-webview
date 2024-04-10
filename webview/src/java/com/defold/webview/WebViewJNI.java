@@ -36,6 +36,8 @@ public class WebViewJNI {
 
     private Activity activity;
     private static WebViewInfo[] infos;
+    private boolean immersiveMode = false;
+    private boolean displayCutout = false;
 
     public native void onPageLoading(String url, int webview_id, int request_id);
     public native void onPageFinished(String url, int webview_id, int request_id);
@@ -196,9 +198,11 @@ public class WebViewJNI {
         int                         webviewID;
     };
 
-    public WebViewJNI(Activity activity, int maxnumviews) {
+    public WebViewJNI(Activity activity, int maxnumviews, boolean immersiveMode, boolean displayCutout) {
         this.activity = activity;
         this.infos = new WebViewInfo[maxnumviews];
+        this.immersiveMode = immersiveMode;
+        this.displayCutout = displayCutout;
     }
 
     private WebViewInfo createView(Activity activity, int webview_id)
@@ -249,14 +253,23 @@ public class WebViewJNI {
         info.windowParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
         info.windowParams.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING;
         if (Build.VERSION.SDK_INT < 30) {
-            info.windowParams.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                                                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                                                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                                                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                                                | View.SYSTEM_UI_FLAG_FULLSCREEN
-                                                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+            if (immersiveMode) {
+                info.windowParams.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                                  | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                                  | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                                  | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                                  | View.SYSTEM_UI_FLAG_FULLSCREEN
+                                                  | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+            } else {
+                info.windowParams.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                                  // | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                                  | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                                  // | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                                  | View.SYSTEM_UI_FLAG_FULLSCREEN
+                                                  | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+            }
         }
-        if (Build.VERSION.SDK_INT >= 28) {
+        if (displayCutout && Build.VERSION.SDK_INT >= 28) {
             info.windowParams.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         }
 
@@ -277,7 +290,11 @@ public class WebViewJNI {
             if (Build.VERSION.SDK_INT >= 30) {
                 WindowInsetsController windowInsetsController = info.layout.getWindowInsetsController();
                 windowInsetsController.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-                windowInsetsController.hide(WindowInsets.Type.systemBars());
+                if (immersiveMode) {
+                    windowInsetsController.hide(WindowInsets.Type.systemBars());
+                } else {
+                    windowInsetsController.hide(WindowInsets.Type.statusBars());
+                }
             }
         }
     }
