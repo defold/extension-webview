@@ -7,6 +7,7 @@
 #include <dmsdk/dlib/array.h>
 #include <dmsdk/dlib/log.h>
 #include <dmsdk/dlib/mutex.h>
+#include <dmsdk/dlib/configfile.h>
 #include <dmsdk/script/script.h>
 #include <dmsdk/extension/extension.h>
 #include <android_native_app_glue.h>
@@ -390,8 +391,10 @@ dmExtension::Result Platform_AppInitialize(dmExtension::AppParams* params)
     g_WebView.m_IsVisible = env->GetMethodID(webview_class, "isVisible", "(I)I");
     g_WebView.m_SetPosition = env->GetMethodID(webview_class, "setPosition", "(IIIII)V");
 
-    jmethodID jni_constructor = env->GetMethodID(webview_class, "<init>", "(Landroid/app/Activity;I)V");
-    g_WebView.m_WebViewJNI = env->NewGlobalRef(env->NewObject(webview_class, jni_constructor, threadAttacher.GetActivity()->clazz, dmWebView::MAX_NUM_WEBVIEWS));
+    int32_t immersiveMode = dmConfigFile::GetInt(params->m_ConfigFile, "android.immersive_mode", 0);
+    int32_t displayCutout = dmConfigFile::GetInt(params->m_ConfigFile, "android.display_cutout", 1);
+    jmethodID jni_constructor = env->GetMethodID(webview_class, "<init>", "(Landroid/app/Activity;IZZ)V");
+    g_WebView.m_WebViewJNI = env->NewGlobalRef(env->NewObject(webview_class, jni_constructor, threadAttacher.GetActivity()->clazz, dmWebView::MAX_NUM_WEBVIEWS, immersiveMode == 1, displayCutout == 1));
 
     return dmExtension::RESULT_OK;
 }

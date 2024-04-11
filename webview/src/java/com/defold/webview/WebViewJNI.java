@@ -15,6 +15,8 @@ import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.widget.LinearLayout;
 import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
@@ -34,65 +36,14 @@ public class WebViewJNI {
 
     private Activity activity;
     private static WebViewInfo[] infos;
+    private boolean immersiveMode = false;
+    private boolean displayCutout = false;
 
     public native void onPageLoading(String url, int webview_id, int request_id);
     public native void onPageFinished(String url, int webview_id, int request_id);
     public native void onReceivedError(String url, int webview_id, int request_id, String errorMessage);
     public native void onEvalFinished(String result, int webview_id, int request_id);
     public native void onEvalFailed(String errorMessage, int webview_id, int request_id);
-
-    private static class CustomWebView extends WebView {
-        private WebViewInfo info;
-
-        public CustomWebView(Activity context, WebViewInfo info) {
-            super(context);
-            this.info = info;
-        }
-
-        // For Android 2.3 able to show Keyboard on input / textarea focus
-        @Override
-        public boolean onTouchEvent(MotionEvent event) {
-            switch (event.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                case MotionEvent.ACTION_UP:
-                if (!this.hasFocus()) {
-                    this.requestFocus();
-
-                }
-
-                if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB ) { // Api level 11
-                    setSystemUiVisibility(
-                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        //| View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        //| View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
-                        | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
-                        | View.SYSTEM_UI_FLAG_IMMERSIVE
-                    );
-                    invalidate();
-                }
-                break;
-            }
-            return super.onTouchEvent(event);
-        }
-
-        @Override
-        protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-            super.onLayout(changed, left, top, right, bottom);
-
-            if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB ) { // Api level 11
-                setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
-                    | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
-                    | View.SYSTEM_UI_FLAG_IMMERSIVE
-                );
-                invalidate();
-            }
-        }
-    }
 
     private static class CustomWebViewClient extends WebViewClient {
         public Activity activity;
@@ -238,7 +189,7 @@ public class WebViewJNI {
 
     private class WebViewInfo
     {
-        CustomWebView               webview;
+        WebView                     webview;
         CustomWebViewClient         webviewClient;
         CustomWebChromeClient       webviewChromeClient;
         LinearLayout                layout;
@@ -247,28 +198,19 @@ public class WebViewJNI {
         int                         webviewID;
     };
 
-    public WebViewJNI(Activity activity, int maxnumviews) {
+    public WebViewJNI(Activity activity, int maxnumviews, boolean immersiveMode, boolean displayCutout) {
         this.activity = activity;
         this.infos = new WebViewInfo[maxnumviews];
+        this.immersiveMode = immersiveMode;
+        this.displayCutout = displayCutout;
     }
 
     private WebViewInfo createView(Activity activity, int webview_id)
     {
         WebViewInfo info = new WebViewInfo();
         info.webviewID = webview_id;
-        info.webview = new CustomWebView(activity, info);
+        info.webview = new WebView(activity);
         info.webview.setVisibility(View.GONE);
-
-        if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB ) { // Api level 11
-            info.webview.setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                //| View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                //| View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
-                | View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
-                | View.SYSTEM_UI_FLAG_IMMERSIVE
-                );
-        }
 
         MarginLayoutParams params = new MarginLayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT);
         params.setMargins(0, 0, 0, 0);
@@ -308,7 +250,28 @@ public class WebViewJNI {
         info.windowParams.y = WindowManager.LayoutParams.MATCH_PARENT;
         info.windowParams.width = WindowManager.LayoutParams.MATCH_PARENT;
         info.windowParams.height = WindowManager.LayoutParams.MATCH_PARENT;
-        info.windowParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+        info.windowParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE; // Fix navigation bar visible briefly when hiding/showing
+        info.windowParams.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING;
+        if (Build.VERSION.SDK_INT < 30) {
+            if (immersiveMode) {
+                info.windowParams.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                                  | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                                  | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                                  | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                                  | View.SYSTEM_UI_FLAG_FULLSCREEN
+                                                  | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+            } else {
+                info.windowParams.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                                  // | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                                  | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                                  // | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                                  | View.SYSTEM_UI_FLAG_FULLSCREEN
+                                                  | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+            }
+        }
+        if (displayCutout && Build.VERSION.SDK_INT >= 28) {
+            info.windowParams.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
 
         info.layout.setLayoutParams(info.windowParams);
         return info;
@@ -323,6 +286,20 @@ public class WebViewJNI {
             info.first = 0;
             WindowManager wm = activity.getWindowManager();
             wm.addView(info.layout, info.windowParams);
+
+            // Fix navigation bar visible briefly when hiding/showing
+            info.windowParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+            wm.updateViewLayout(info.layout, info.windowParams);
+
+            if (Build.VERSION.SDK_INT >= 30) {
+                WindowInsetsController windowInsetsController = info.layout.getWindowInsetsController();
+                windowInsetsController.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                if (immersiveMode) {
+                    windowInsetsController.hide(WindowInsets.Type.systemBars());
+                } else {
+                    windowInsetsController.hide(WindowInsets.Type.statusBars());
+                }
+            }
         }
     }
 
@@ -333,7 +310,7 @@ public class WebViewJNI {
         info.windowParams.width = width >= 0 ? width : WindowManager.LayoutParams.MATCH_PARENT;
         info.windowParams.height = height >= 0 ? height : WindowManager.LayoutParams.MATCH_PARENT;
 
-        if (info.webview.getVisibility() == View.VISIBLE ) {
+        if (info.webview.getVisibility() == View.VISIBLE) {
             WindowManager wm = activity.getWindowManager();
             wm.updateViewLayout(info.layout, info.windowParams);
         }
