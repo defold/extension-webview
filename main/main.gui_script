@@ -87,7 +87,12 @@ function on_input(self, action_id, action)
     dirtylarry:button("button_open", action_id, action, function()
         if not webview_exists(self) then return end
 
-        webview.open(self.webview_id, "https://www.google.com")
+        local options = {
+            headers = {
+               ["Accept-Origin"] = "*",
+            }
+        }
+        webview.open(self.webview_id, "https://www.google.com", options)
     end)
 
     dirtylarry:button("button_eval", action_id, action, function()

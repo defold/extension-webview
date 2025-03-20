@@ -67,6 +67,7 @@ int Platform_Eval(lua_State* L, int webview_id, const char* code);
 int Platform_SetVisible(lua_State* L, int webview_id, int visible);
 int Platform_IsVisible(lua_State* L, int webview_id);
 int Platform_SetPosition(lua_State* L, int webview_id, int x, int y, int width, int height);
+int Platform_AddHeader(lua_State* L, int webview_id, const char* header, const char* value);
 
 // The extension life cycle functions
 dmExtension::Result Platform_AppInitialize(dmExtension::AppParams* params);
