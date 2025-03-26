@@ -85,6 +85,10 @@ public class WebViewJNI {
             }
         }
 
+        public void clearHeaders() {
+            extraHeaders.clear();
+        }
+
         private String trimTrailingSlash(String url) {
             if (url.endsWith("/")) {
                 url = url.substring(0, url.length() - 1);
@@ -394,6 +398,10 @@ public class WebViewJNI {
 
     public void addHeader(final int webview_id, final String header, final String value) {
         WebViewJNI.this.infos[webview_id].webviewClient.addHeader(header, value);
+    }
+
+    public void clearHeaders(final int webview_id) {
+        WebViewJNI.this.infos[webview_id].webviewClient.clearHeaders();
     }
 
     public void loadRaw(final String html, final int webview_id, final int request_id, final int hidden) {

@@ -248,6 +248,13 @@ static void DestroyWebView(int webview_id)
     g_WebView.m_WebViews[webview_id] = NULL;
 }
 
+int Platform_ClearHeaders(lua_State* L, int webview_id)
+{
+    CHECK_WEBVIEW_AND_RETURN();
+    [g_WebView.m_WebViewDelegates[webview_id]->m_Headers removeAllObjects];
+    return 0;
+}
+
 int Platform_AddHeader(lua_State* L, int webview_id, const char* header, const char* value)
 {
     CHECK_WEBVIEW_AND_RETURN();

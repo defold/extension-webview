@@ -131,6 +131,7 @@ static int Destroy(lua_State* L)
 
 void ParseHeaders(lua_State* L, int argumentindex, int webview_id)
 {
+    Platform_ClearHeaders(L, webview_id);
     luaL_checktype(L, argumentindex, LUA_TTABLE);
     lua_pushvalue(L, argumentindex);
     lua_pushnil(L);
@@ -166,11 +167,6 @@ void ParseOptions(lua_State* L, int argumentindex, int webview_id, RequestInfo* 
     lua_pop(L, 1);
 }
 
-
-/** Opens an url in the view
-@param url url
-@return the request id
-*/
 static int Open(lua_State* L)
 {
     int top = lua_gettop(L);
