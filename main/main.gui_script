@@ -24,6 +24,7 @@ local function webview_callback(self, webview_id, request_id, type, data)
 
     elseif type == webview.CALLBACK_RESULT_URL_LOADING then
         print("CALLBACK_RESULT_URL_LOADING")
+        pprint(data)
         -- a page is loading
         -- return false to prevent it from loading
         -- return true or nil to continue loading the page
@@ -89,7 +90,8 @@ function on_input(self, action_id, action)
 
         local options = {
             headers = {
-               ["Accept-Origin"] = "*",
+                ["Accept-Origin"] = "*",
+                ["User-Agent"] = "Foobar 1.0",
             }
         }
         webview.open(self.webview_id, "https://www.google.com", options)
