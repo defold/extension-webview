@@ -225,10 +225,35 @@ int Platform_Destroy(lua_State* L, int webview_id)
     return 0;
 }
 
+int Platform_SetTransparentInternal(WKWebView *view, int transparent)
+{
+    #if defined(DM_PLATFORM_IOS)
+    view.opaque = (BOOL)!transparent;
+    view.backgroundColor = (transparent == 0) ? UIColor.whiteColor : UIColor.clearColor;
+    view.scrollView.backgroundColor = (transparent == 0) ? UIColor.whiteColor : UIColor.clearColor;
+    #elif defined(DM_PLATFORM_OSX)
+    view.wantsLayer = true;
+    view.layer.opaque = (BOOL)!transparent;
+    view.layer.backgroundColor = (transparent == 0) ? CGColorGetConstantColor(kCGColorWhite) : CGColorGetConstantColor(kCGColorClear);
+    #endif
+}
+
+int Platform_SetVisibleInternal(WKWebView *view, int visible)
+{
+    view.hidden = (BOOL)!visible;
+}
+
+int Platform_SetTransparent(lua_State* L, int webview_id, int transparent)
+{
+    CHECK_WEBVIEW_AND_RETURN();
+    Platform_SetTransparentInternal(g_WebView.m_WebViews[webview_id], transparent);
+}
+
 int Platform_Open(lua_State* L, int webview_id, const char* url, dmWebView::RequestInfo* options)
 {
     CHECK_WEBVIEW_AND_RETURN();
-    g_WebView.m_WebViews[webview_id].hidden = options->m_Hidden;
+    Platform_SetVisibleInternal(g_WebView.m_WebViews[webview_id], !options->m_Hidden);
+    Platform_SetTransparentInternal(g_WebView.m_WebViews[webview_id], options->m_Transparent);
 
     NSURL* ns_url = [NSURL URLWithString: [NSString stringWithUTF8String: url]];
     NSURLRequest* request = [NSURLRequest requestWithURL: ns_url];
@@ -239,7 +264,8 @@ int Platform_Open(lua_State* L, int webview_id, const char* url, dmWebView::Requ
 int Platform_OpenRaw(lua_State* L, int webview_id, const char* html, dmWebView::RequestInfo* options)
 {
     CHECK_WEBVIEW_AND_RETURN();
-    g_WebView.m_WebViews[webview_id].hidden = options->m_Hidden;
+    Platform_SetVisibleInternal(g_WebView.m_WebViews[webview_id], !options->m_Hidden);
+    Platform_SetTransparentInternal(g_WebView.m_WebViews[webview_id], options->m_Transparent);
 
     NSString* ns_html = [NSString stringWithUTF8String: html];
     [g_WebView.m_WebViews[webview_id] loadHTMLString:ns_html baseURL:nil];
@@ -291,7 +317,7 @@ int Platform_Eval(lua_State* L, int webview_id, const char* code)
 int Platform_SetVisible(lua_State* L, int webview_id, int visible)
 {
     CHECK_WEBVIEW_AND_RETURN();
-    g_WebView.m_WebViews[webview_id].hidden = (BOOL)!visible;
+    Platform_SetVisibleInternal(g_WebView.m_WebViews[webview_id], visible);
     return 0;
 }
 

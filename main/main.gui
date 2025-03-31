@@ -1,1137 +1,381 @@
 script: "/main/main.gui_script"
-background_color {
-  x: 0.0
-  y: 0.0
-  z: 0.0
-  w: 0.0
+textures {
+  name: "main"
+  texture: "/main/main.atlas"
 }
 nodes {
   position {
     x: 320.0
-    y: 195.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
+    y: 273.0
   }
   scale {
     x: 0.5
     y: 0.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEMPLATE
   id: "button_open"
-  layer: ""
   inherit_alpha: true
-  alpha: 1.0
   template: "/dirtylarry/button.gui"
-  template_node_child: false
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  scale {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
   size {
     x: 800.0
     y: 120.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_BOX
-  blend_mode: BLEND_MODE_ALPHA
-  texture: "button/button_normal"
   id: "button_open/larrybutton"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  adjust_mode: ADJUST_MODE_FIT
   parent: "button_open"
-  layer: ""
-  inherit_alpha: true
-  slice9 {
-    x: 32.0
-    y: 32.0
-    z: 32.0
-    w: 32.0
-  }
-  clipping_mode: CLIPPING_MODE_NONE
-  clipping_visible: true
-  clipping_inverted: false
-  alpha: 1.0
   overridden_fields: 4
   template_node_child: true
-  size_mode: SIZE_MODE_MANUAL
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
   scale {
     x: 1.5
     y: 1.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEXT
-  blend_mode: BLEND_MODE_ALPHA
   text: "Open www.google.com"
-  font: "larryfont"
   id: "button_open/larrylabel"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  outline {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  shadow {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
-  adjust_mode: ADJUST_MODE_FIT
-  line_break: false
   parent: "button_open/larrybutton"
-  layer: ""
-  inherit_alpha: true
-  alpha: 1.0
   outline_alpha: 0.0
-  shadow_alpha: 1.0
   overridden_fields: 3
   overridden_fields: 8
   overridden_fields: 31
   template_node_child: true
-  text_leading: 1.0
-  text_tracking: 0.0
 }
 nodes {
   position {
     x: 215.0
-    y: 125.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
+    y: 203.0
   }
   scale {
     x: 0.5
     y: 0.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEMPLATE
   id: "button_show"
-  layer: ""
   inherit_alpha: true
-  alpha: 1.0
   template: "/dirtylarry/button.gui"
-  template_node_child: false
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  scale {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
   size {
     x: 380.0
     y: 120.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_BOX
-  blend_mode: BLEND_MODE_ALPHA
-  texture: "button/button_normal"
   id: "button_show/larrybutton"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  adjust_mode: ADJUST_MODE_FIT
   parent: "button_show"
-  layer: ""
-  inherit_alpha: true
-  slice9 {
-    x: 32.0
-    y: 32.0
-    z: 32.0
-    w: 32.0
-  }
-  clipping_mode: CLIPPING_MODE_NONE
-  clipping_visible: true
-  clipping_inverted: false
-  alpha: 1.0
   overridden_fields: 4
   template_node_child: true
-  size_mode: SIZE_MODE_MANUAL
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
   scale {
     x: 1.5
     y: 1.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEXT
-  blend_mode: BLEND_MODE_ALPHA
   text: "Show"
-  font: "larryfont"
   id: "button_show/larrylabel"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  outline {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  shadow {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
-  adjust_mode: ADJUST_MODE_FIT
-  line_break: false
   parent: "button_show/larrybutton"
-  layer: ""
-  inherit_alpha: true
-  alpha: 1.0
   outline_alpha: 0.0
-  shadow_alpha: 1.0
   overridden_fields: 3
   overridden_fields: 8
   overridden_fields: 31
   template_node_child: true
-  text_leading: 1.0
-  text_tracking: 0.0
 }
 nodes {
   position {
     x: 425.0
-    y: 125.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
+    y: 203.0
   }
   scale {
     x: 0.5
     y: 0.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEMPLATE
   id: "button_hide"
-  layer: ""
   inherit_alpha: true
-  alpha: 1.0
   template: "/dirtylarry/button.gui"
-  template_node_child: false
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  scale {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
   size {
     x: 380.0
     y: 120.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_BOX
-  blend_mode: BLEND_MODE_ALPHA
-  texture: "button/button_normal"
   id: "button_hide/larrybutton"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  adjust_mode: ADJUST_MODE_FIT
   parent: "button_hide"
-  layer: ""
-  inherit_alpha: true
-  slice9 {
-    x: 32.0
-    y: 32.0
-    z: 32.0
-    w: 32.0
-  }
-  clipping_mode: CLIPPING_MODE_NONE
-  clipping_visible: true
-  clipping_inverted: false
-  alpha: 1.0
   overridden_fields: 4
   template_node_child: true
-  size_mode: SIZE_MODE_MANUAL
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
   scale {
     x: 1.5
     y: 1.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEXT
-  blend_mode: BLEND_MODE_ALPHA
   text: "Hide"
-  font: "larryfont"
   id: "button_hide/larrylabel"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  outline {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  shadow {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
-  adjust_mode: ADJUST_MODE_FIT
-  line_break: false
   parent: "button_hide/larrybutton"
-  layer: ""
-  inherit_alpha: true
-  alpha: 1.0
   outline_alpha: 0.0
-  shadow_alpha: 1.0
   overridden_fields: 3
   overridden_fields: 8
   overridden_fields: 31
   template_node_child: true
-  text_leading: 1.0
-  text_tracking: 0.0
 }
 nodes {
   position {
     x: 320.0
-    y: 335.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
+    y: 413.0
   }
   scale {
     x: 0.5
     y: 0.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEMPLATE
   id: "button_eval"
-  layer: ""
   inherit_alpha: true
-  alpha: 1.0
   template: "/dirtylarry/button.gui"
-  template_node_child: false
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  scale {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
   size {
     x: 800.0
     y: 120.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_BOX
-  blend_mode: BLEND_MODE_ALPHA
-  texture: "button/button_normal"
   id: "button_eval/larrybutton"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  adjust_mode: ADJUST_MODE_FIT
   parent: "button_eval"
-  layer: ""
-  inherit_alpha: true
-  slice9 {
-    x: 32.0
-    y: 32.0
-    z: 32.0
-    w: 32.0
-  }
-  clipping_mode: CLIPPING_MODE_NONE
-  clipping_visible: true
-  clipping_inverted: false
-  alpha: 1.0
   overridden_fields: 4
   template_node_child: true
-  size_mode: SIZE_MODE_MANUAL
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
   scale {
     x: 1.5
     y: 1.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEXT
-  blend_mode: BLEND_MODE_ALPHA
   text: "Eval 1+1"
-  font: "larryfont"
   id: "button_eval/larrylabel"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  outline {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  shadow {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
-  adjust_mode: ADJUST_MODE_FIT
-  line_break: false
   parent: "button_eval/larrybutton"
-  layer: ""
-  inherit_alpha: true
-  alpha: 1.0
   outline_alpha: 0.0
-  shadow_alpha: 1.0
   overridden_fields: 3
   overridden_fields: 8
   overridden_fields: 31
   template_node_child: true
-  text_leading: 1.0
-  text_tracking: 0.0
 }
 nodes {
   position {
     x: 320.0
-    y: 265.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
+    y: 343.0
   }
   scale {
     x: 0.5
     y: 0.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEMPLATE
   id: "button_html"
-  layer: ""
   inherit_alpha: true
-  alpha: 1.0
   template: "/dirtylarry/button.gui"
-  template_node_child: false
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  scale {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
   size {
     x: 800.0
     y: 120.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_BOX
-  blend_mode: BLEND_MODE_ALPHA
-  texture: "button/button_normal"
   id: "button_html/larrybutton"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  adjust_mode: ADJUST_MODE_FIT
   parent: "button_html"
-  layer: ""
-  inherit_alpha: true
-  slice9 {
-    x: 32.0
-    y: 32.0
-    z: 32.0
-    w: 32.0
-  }
-  clipping_mode: CLIPPING_MODE_NONE
-  clipping_visible: true
-  clipping_inverted: false
-  alpha: 1.0
   overridden_fields: 4
   template_node_child: true
-  size_mode: SIZE_MODE_MANUAL
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
   scale {
     x: 1.5
     y: 1.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEXT
-  blend_mode: BLEND_MODE_ALPHA
   text: "Open HTML"
-  font: "larryfont"
   id: "button_html/larrylabel"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  outline {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  shadow {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
-  adjust_mode: ADJUST_MODE_FIT
-  line_break: false
   parent: "button_html/larrybutton"
-  layer: ""
-  inherit_alpha: true
-  alpha: 1.0
   outline_alpha: 0.0
-  shadow_alpha: 1.0
   overridden_fields: 3
   overridden_fields: 8
   overridden_fields: 31
   template_node_child: true
-  text_leading: 1.0
-  text_tracking: 0.0
+}
+nodes {
+  position {
+    x: 215.0
+    y: 133.0
+  }
+  scale {
+    x: 0.5
+    y: 0.5
+  }
+  type: TYPE_TEMPLATE
+  id: "button_create"
+  inherit_alpha: true
+  template: "/dirtylarry/button.gui"
+}
+nodes {
+  size {
+    x: 380.0
+    y: 120.0
+  }
+  type: TYPE_BOX
+  id: "button_create/larrybutton"
+  parent: "button_create"
+  overridden_fields: 4
+  template_node_child: true
+}
+nodes {
+  scale {
+    x: 1.5
+    y: 1.5
+  }
+  type: TYPE_TEXT
+  text: "Create"
+  id: "button_create/larrylabel"
+  parent: "button_create/larrybutton"
+  outline_alpha: 0.0
+  overridden_fields: 3
+  overridden_fields: 8
+  overridden_fields: 31
+  template_node_child: true
+}
+nodes {
+  position {
+    x: 425.0
+    y: 133.0
+  }
+  scale {
+    x: 0.5
+    y: 0.5
+  }
+  type: TYPE_TEMPLATE
+  id: "button_destroy"
+  inherit_alpha: true
+  template: "/dirtylarry/button.gui"
+}
+nodes {
+  size {
+    x: 380.0
+    y: 120.0
+  }
+  type: TYPE_BOX
+  id: "button_destroy/larrybutton"
+  parent: "button_destroy"
+  overridden_fields: 4
+  template_node_child: true
+}
+nodes {
+  scale {
+    x: 1.5
+    y: 1.5
+  }
+  type: TYPE_TEXT
+  text: "Destroy"
+  id: "button_destroy/larrylabel"
+  parent: "button_destroy/larrybutton"
+  outline_alpha: 0.0
+  overridden_fields: 3
+  overridden_fields: 8
+  overridden_fields: 31
+  template_node_child: true
 }
 nodes {
   position {
     x: 215.0
     y: 55.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
   }
   scale {
     x: 0.5
     y: 0.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEMPLATE
-  id: "button_create"
-  layer: ""
+  id: "button_opaque"
   inherit_alpha: true
-  alpha: 1.0
   template: "/dirtylarry/button.gui"
-  template_node_child: false
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  scale {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
   size {
     x: 380.0
     y: 120.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_BOX
-  blend_mode: BLEND_MODE_ALPHA
-  texture: "button/button_normal"
-  id: "button_create/larrybutton"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  adjust_mode: ADJUST_MODE_FIT
-  parent: "button_create"
-  layer: ""
-  inherit_alpha: true
-  slice9 {
-    x: 32.0
-    y: 32.0
-    z: 32.0
-    w: 32.0
-  }
-  clipping_mode: CLIPPING_MODE_NONE
-  clipping_visible: true
-  clipping_inverted: false
-  alpha: 1.0
+  id: "button_opaque/larrybutton"
+  parent: "button_opaque"
   overridden_fields: 4
   template_node_child: true
-  size_mode: SIZE_MODE_MANUAL
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
   scale {
     x: 1.5
     y: 1.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEXT
-  blend_mode: BLEND_MODE_ALPHA
-  text: "Create"
-  font: "larryfont"
-  id: "button_create/larrylabel"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  outline {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  shadow {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
-  adjust_mode: ADJUST_MODE_FIT
-  line_break: false
-  parent: "button_create/larrybutton"
-  layer: ""
-  inherit_alpha: true
-  alpha: 1.0
+  text: "Opaque"
+  id: "button_opaque/larrylabel"
+  parent: "button_opaque/larrybutton"
   outline_alpha: 0.0
-  shadow_alpha: 1.0
   overridden_fields: 3
   overridden_fields: 8
   overridden_fields: 31
   template_node_child: true
-  text_leading: 1.0
-  text_tracking: 0.0
 }
 nodes {
   position {
     x: 425.0
     y: 55.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
   }
   scale {
     x: 0.5
     y: 0.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEMPLATE
-  id: "button_destroy"
-  layer: ""
+  id: "button_transparent"
   inherit_alpha: true
-  alpha: 1.0
   template: "/dirtylarry/button.gui"
-  template_node_child: false
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  scale {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
   size {
     x: 380.0
     y: 120.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_BOX
-  blend_mode: BLEND_MODE_ALPHA
-  texture: "button/button_normal"
-  id: "button_destroy/larrybutton"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  adjust_mode: ADJUST_MODE_FIT
-  parent: "button_destroy"
-  layer: ""
-  inherit_alpha: true
-  slice9 {
-    x: 32.0
-    y: 32.0
-    z: 32.0
-    w: 32.0
-  }
-  clipping_mode: CLIPPING_MODE_NONE
-  clipping_visible: true
-  clipping_inverted: false
-  alpha: 1.0
+  id: "button_transparent/larrybutton"
+  parent: "button_transparent"
   overridden_fields: 4
   template_node_child: true
-  size_mode: SIZE_MODE_MANUAL
 }
 nodes {
-  position {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  rotation {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
   scale {
     x: 1.5
     y: 1.5
-    z: 1.0
-    w: 1.0
-  }
-  size {
-    x: 200.0
-    y: 100.0
-    z: 0.0
-    w: 1.0
-  }
-  color {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
   }
   type: TYPE_TEXT
-  blend_mode: BLEND_MODE_ALPHA
-  text: "Destroy"
-  font: "larryfont"
-  id: "button_destroy/larrylabel"
-  xanchor: XANCHOR_NONE
-  yanchor: YANCHOR_NONE
-  pivot: PIVOT_CENTER
-  outline {
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 1.0
-  }
-  shadow {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-    w: 1.0
-  }
-  adjust_mode: ADJUST_MODE_FIT
-  line_break: false
-  parent: "button_destroy/larrybutton"
-  layer: ""
-  inherit_alpha: true
-  alpha: 1.0
+  text: "Transparent"
+  id: "button_transparent/larrylabel"
+  parent: "button_transparent/larrybutton"
   outline_alpha: 0.0
-  shadow_alpha: 1.0
   overridden_fields: 3
   overridden_fields: 8
   overridden_fields: 31
   template_node_child: true
-  text_leading: 1.0
-  text_tracking: 0.0
+}
+nodes {
+  position {
+    y: 960.0
+  }
+  type: TYPE_BOX
+  texture: "main/logo_256"
+  id: "logo"
+  xanchor: XANCHOR_LEFT
+  yanchor: YANCHOR_TOP
+  pivot: PIVOT_NW
+  adjust_mode: ADJUST_MODE_ZOOM
+  inherit_alpha: true
+  size_mode: SIZE_MODE_AUTO
 }
 material: "/builtins/materials/gui.material"
 adjust_reference: ADJUST_REFERENCE_PARENT
-max_nodes: 512
