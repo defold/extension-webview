@@ -30,6 +30,7 @@ struct WebViewInfo
 struct RequestInfo
 {
     int         m_Hidden;
+    int         m_Transparent;
 
     RequestInfo() : m_Hidden(0) {}
 };
@@ -64,6 +65,7 @@ int Platform_OpenRaw(lua_State* L, int webview_id, const char* html, dmWebView::
 int Platform_ContinueOpen(lua_State* L, int webview_id, int request_id, const char* url);
 int Platform_CancelOpen(lua_State* L, int webview_id, int request_id, const char* url);
 int Platform_Eval(lua_State* L, int webview_id, const char* code);
+int Platform_SetTransparent(lua_State* L, int webview_id, int transparent);
 int Platform_SetVisible(lua_State* L, int webview_id, int visible);
 int Platform_IsVisible(lua_State* L, int webview_id);
 int Platform_SetPosition(lua_State* L, int webview_id, int x, int y, int width, int height);
