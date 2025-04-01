@@ -95,6 +95,14 @@ static int Create(lua_State* L)
 {
     int top = lua_gettop(L);
 
+    int index = 1;
+    if (lua_type(L, 1) == LUA_TTABLE)
+    {
+        index = index +1;
+    }
+    luaL_checktype(L, 1, LUA_TFUNCTION);
+
+
     luaL_checktype(L, 1, LUA_TFUNCTION);
     lua_pushvalue(L, 1);
 
@@ -182,6 +190,11 @@ void ParseOptions(lua_State* L, int argumentindex, int webview_id, RequestInfo* 
         {
             ParseHeaders(L, -1, webview_id);
         }
+        else if( strcmp(attr, "transparent") == 0 )
+        {
+            luaL_checktype(L, -1, LUA_TBOOLEAN);
+            requestinfo->m_Transparent = lua_toboolean(L, -1);
+        }
         lua_pop(L, 1);
     }
     lua_pop(L, 1);
@@ -242,9 +255,29 @@ static int SetVisible(lua_State* L)
 {
     int top = lua_gettop(L);
     const int webview_id = luaL_checknumber(L, 1);
-    const int visible = luaL_checknumber(L, 2);
+    int visible = 0;
+    if (lua_type(L, 2) == LUA_TNUMBER)
+    {
+        visible = luaL_checknumber(L, 2);
+    }
+    else
+    {
+        visible = lua_toboolean(L, 2);
+    }
 
     Platform_SetVisible(L, webview_id, visible);
+
+    assert(top == lua_gettop(L));
+    return 0;
+}
+
+static int SetTransparent(lua_State* L)
+{
+    int top = lua_gettop(L);
+    const int webview_id = luaL_checknumber(L, 1);
+    const int transparent = lua_toboolean(L, 2);
+
+    Platform_SetTransparent(L, webview_id, transparent);
 
     assert(top == lua_gettop(L));
     return 0;
@@ -285,6 +318,7 @@ static const luaL_reg WebView_methods[] =
     {"open_raw", OpenRaw},
     {"eval", Eval},
     {"set_visible", SetVisible},
+    {"set_transparent", SetTransparent},
     {"set_position", SetPosition},
     {"is_visible", IsVisible},
     {0, 0}

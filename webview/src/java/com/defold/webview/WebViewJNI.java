@@ -28,6 +28,9 @@ import android.webkit.WebSettings;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 
+import android.graphics.PixelFormat;
+import android.graphics.Color;
+
 import android.util.Log;
 
 import java.util.Map;
@@ -304,6 +307,7 @@ public class WebViewJNI {
         info.windowParams.height = WindowManager.LayoutParams.MATCH_PARENT;
         info.windowParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE; // Fix navigation bar visible briefly when hiding/showing
         info.windowParams.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING;
+        info.windowParams.format = PixelFormat.TRANSLUCENT; // To be able to make webview transparent
         if (Build.VERSION.SDK_INT < 30) {
             if (immersiveMode) {
                 info.windowParams.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -327,6 +331,11 @@ public class WebViewJNI {
 
         info.layout.setLayoutParams(info.windowParams);
         return info;
+    }
+
+    private void setTransparentInternal(WebViewInfo info, final int transparent)
+    {
+        info.webview.setBackgroundColor((transparent == 1) ? Color.TRANSPARENT : Color.WHITE);
     }
 
     private void setVisibleInternal(WebViewInfo info, int visible)
@@ -404,7 +413,7 @@ public class WebViewJNI {
         WebViewJNI.this.infos[webview_id].webviewClient.clearHeaders();
     }
 
-    public void loadRaw(final String html, final int webview_id, final int request_id, final int hidden) {
+    public void loadRaw(final String html, final int webview_id, final int request_id, final int hidden, final int transparent) {
         this.activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -413,11 +422,12 @@ public class WebViewJNI {
                 WebViewJNI.this.infos[webview_id].webviewClient.setContinueLoadingUrl("file:///android_res/");
                 WebViewJNI.this.infos[webview_id].webview.loadDataWithBaseURL("file:///android_res/", html, "text/html", "utf-8", null);
                 setVisibleInternal(WebViewJNI.this.infos[webview_id], hidden != 0 ? 0 : 1);
+                setTransparentInternal(WebViewJNI.this.infos[webview_id], transparent);
             }
         });
     }
 
-    public void load(final String url, final int webview_id, final int request_id, final int hidden) {
+    public void load(final String url, final int webview_id, final int request_id, final int hidden, final int transparent) {
         this.activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -426,6 +436,7 @@ public class WebViewJNI {
                 WebViewJNI.this.infos[webview_id].webviewClient.setContinueLoadingUrl(url);
                 WebViewJNI.this.infos[webview_id].webview.loadUrl(url);
                 setVisibleInternal(WebViewJNI.this.infos[webview_id], hidden != 0 ? 0 : 1);
+                setTransparentInternal(WebViewJNI.this.infos[webview_id], transparent);
             }
         });
     }
@@ -473,6 +484,15 @@ public class WebViewJNI {
             @Override
             public void run() {
                 setPositionInternal(WebViewJNI.this.infos[webview_id], x, y, width, height);
+            }
+        });
+    }
+
+    public void setTransparent(final int webview_id, final int transparent) {
+        this.activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                setTransparentInternal(WebViewJNI.this.infos[webview_id], transparent);
             }
         });
     }

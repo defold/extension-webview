@@ -114,6 +114,9 @@
           - name: headers
             type: table
             desc: A table of header keys and values
+          - name: transparent
+            type: boolean
+            desc: If true, the webview background will be transparent (default=false)
     examples:
       - desc: |-
                  ```lua
@@ -160,6 +163,17 @@
                  ```lua
                  local request_id = webview.eval(webview_id, "GetMyFormData()")
                  ```
+
+  - name: set_transparent
+    type: function
+    desc: Set transparency of webview background
+    parameters:
+      - name: webview_id
+        type: number
+        desc: The webview id
+      - name: transparent
+        type: boolean
+        desc: If `true`, the webview background becomes transparent, otherwise opaque.
 
   - name: set_visible
     type: function

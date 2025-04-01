@@ -64,6 +64,7 @@ struct WebViewExtensionState
     jmethodID               m_LoadRaw;
     jmethodID               m_ContinueLoading;
     jmethodID               m_Eval;
+    jmethodID               m_SetTransparent;
     jmethodID               m_SetVisible;
     jmethodID               m_IsVisible;
     jmethodID               m_SetPosition;
@@ -134,7 +135,7 @@ int Platform_Open(lua_State* L, int webview_id, const char* url, dmWebView::Requ
     dmAndroid::ThreadAttacher threadAttacher;
     JNIEnv* env = threadAttacher.GetEnv();
     jstring jurl = env->NewStringUTF(url);
-    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_Load, jurl, webview_id, request_id, options->m_Hidden);
+    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_Load, jurl, webview_id, request_id, options->m_Hidden, options->m_Transparent);
     env->DeleteLocalRef(jurl);
     return request_id;
 }
@@ -165,7 +166,7 @@ int Platform_OpenRaw(lua_State* L, int webview_id, const char* html, dmWebView::
     dmAndroid::ThreadAttacher threadAttacher;
     JNIEnv* env = threadAttacher.GetEnv();
     jstring jhtml = env->NewStringUTF(html);
-    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_LoadRaw, jhtml, webview_id, request_id, options->m_Hidden);
+    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_LoadRaw, jhtml, webview_id, request_id, options->m_Hidden, options->m_Transparent);
     env->DeleteLocalRef(jhtml);
     return request_id;
 }
@@ -181,6 +182,15 @@ int Platform_Eval(lua_State* L, int webview_id, const char* code)
     env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_Eval, jcode, webview_id, request_id);
     env->DeleteLocalRef(jcode);
     return request_id;
+}
+
+int Platform_SetTransparent(lua_State* L, int webview_id, int transparent)
+{
+    CHECK_WEBVIEW_AND_RETURN();
+    dmAndroid::ThreadAttacher threadAttacher;
+    JNIEnv* env = threadAttacher.GetEnv();
+    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_SetTransparent, webview_id, transparent);
+    return 0;
 }
 
 int Platform_SetVisible(lua_State* L, int webview_id, int visible)
@@ -408,11 +418,12 @@ dmExtension::Result Platform_AppInitialize(dmExtension::AppParams* params)
 
     g_WebView.m_Create = env->GetMethodID(webview_class, "create", "(I)V");
     g_WebView.m_Destroy = env->GetMethodID(webview_class, "destroy", "(I)V");
-    g_WebView.m_Load = env->GetMethodID(webview_class, "load", "(Ljava/lang/String;III)V");
-    g_WebView.m_LoadRaw = env->GetMethodID(webview_class, "loadRaw", "(Ljava/lang/String;III)V");
+    g_WebView.m_Load = env->GetMethodID(webview_class, "load", "(Ljava/lang/String;IIII)V");
+    g_WebView.m_LoadRaw = env->GetMethodID(webview_class, "loadRaw", "(Ljava/lang/String;IIII)V");
     g_WebView.m_ContinueLoading = env->GetMethodID(webview_class, "continueLoading", "(Ljava/lang/String;II)V");
     g_WebView.m_Eval = env->GetMethodID(webview_class, "eval", "(Ljava/lang/String;II)V");
     g_WebView.m_SetVisible = env->GetMethodID(webview_class, "setVisible", "(II)V");
+    g_WebView.m_SetTransparent = env->GetMethodID(webview_class, "setTransparent", "(II)V");
     g_WebView.m_IsVisible = env->GetMethodID(webview_class, "isVisible", "(I)I");
     g_WebView.m_SetPosition = env->GetMethodID(webview_class, "setPosition", "(IIIII)V");
     g_WebView.m_AddHeader = env->GetMethodID(webview_class, "addHeader", "(ILjava/lang/String;Ljava/lang/String;)V");
