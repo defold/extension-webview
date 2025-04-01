@@ -136,17 +136,59 @@ static int Destroy(lua_State* L)
     return 1;
 }
 
-void ParseOptions(lua_State* L, int argumentindex, RequestInfo* requestinfo)
+
+void ParseHeaders(lua_State* L, int argumentindex, int webview_id)
+{
+    Platform_ClearHeaders(L, webview_id);
+    luaL_checktype(L, argumentindex, LUA_TTABLE);
+    lua_pushvalue(L, argumentindex);
+
+    // first key
+    lua_pushnil(L);
+
+    // push key-value pair
+    while (lua_next(L, -2))
+    {
+        // push copy of key (ie the header), convert it, pop it
+        // note from Lua docs: If the value is a number, then lua_tolstring also
+        // changes the actual value in the stack to a string. This change
+        // confuses lua_next when lua_tolstring is applied to keys during a
+        // table traversal
+        lua_pushvalue(L, -2);
+        const char* header = lua_tostring(L, -1);
+        lua_pop(L, 1);
+
+        // push copy of value, convert it, pop it
+        lua_pushvalue(L, -1);
+        const char* value = lua_tostring(L, -1);
+        lua_pop(L, 1);
+
+        Platform_AddHeader(L, webview_id, header, value);
+
+        // remove value, keep key for lua_next
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1);
+}
+
+
+void ParseOptions(lua_State* L, int argumentindex, int webview_id, RequestInfo* requestinfo)
 {
     luaL_checktype(L, argumentindex, LUA_TTABLE);
     lua_pushvalue(L, argumentindex);
     lua_pushnil(L);
     while (lua_next(L, -2)) {
-        const char* attr = lua_tostring(L, -2);
+        lua_pushvalue(L, -2);
+        const char* attr = lua_tostring(L, -1);
+        lua_pop(L, 1);
         if( strcmp(attr, "hidden") == 0 )
         {
             luaL_checktype(L, -1, LUA_TBOOLEAN);
             requestinfo->m_Hidden = lua_toboolean(L, -1);
+        }
+        else if (strcmp(attr, "headers") == 0)
+        {
+            ParseHeaders(L, -1, webview_id);
         }
         else if( strcmp(attr, "transparent") == 0 )
         {
@@ -158,10 +200,6 @@ void ParseOptions(lua_State* L, int argumentindex, RequestInfo* requestinfo)
     lua_pop(L, 1);
 }
 
-/** Opens an url in the view
-@param url url
-@return the request id
-*/
 static int Open(lua_State* L)
 {
     int top = lua_gettop(L);
@@ -171,7 +209,7 @@ static int Open(lua_State* L)
     RequestInfo requestinfo;
     if( top >= 3 && !lua_isnil(L, 3))
     {
-        ParseOptions(L, 3, &requestinfo);
+        ParseOptions(L, 3, webview_id, &requestinfo);
     }
 
     int request_id = Platform_Open(L, webview_id, url, &requestinfo);
@@ -190,7 +228,7 @@ static int OpenRaw(lua_State* L)
     RequestInfo requestinfo;
     if( top >= 3 && !lua_isnil(L, 3))
     {
-        ParseOptions(L, 3, &requestinfo);
+        ParseOptions(L, 3, webview_id, &requestinfo);
     }
 
     int request_id = Platform_OpenRaw(L, webview_id, html, &requestinfo);

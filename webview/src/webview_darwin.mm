@@ -44,6 +44,8 @@ struct Command
     @public int m_WebViewID;
     @public int m_RequestID;
     @public NSString *m_PendingUrl;
+    @public bool m_HeadersSet;
+    @public NSMutableDictionary* m_Headers;
     @public void (^m_DecisionHandler)(WKNavigationActionPolicy);
 }
 @end
@@ -84,23 +86,50 @@ WebViewExtensionState g_WebView;
     // if this happens it means that we have navigated to a new page
     // before the previous callback completed
     // if we don't make a decision we'll get an error
-    if (m_DecisionHandler) {
+    if (m_DecisionHandler)
+    {
         m_DecisionHandler(WKNavigationActionPolicyCancel);
         m_DecisionHandler = NULL;
     }
 
-    NSString *url = navigationAction.request.URL.absoluteString;
-    m_PendingUrl = url;
-    m_DecisionHandler = decisionHandler;
+    // if headers have not been set we first copy the request
+    // and then set the headers on the request and finally
+    // we cancel the original request and load the new one
+    if (!m_HeadersSet)
+    {
+        // cancel original request
+        decisionHandler(WKNavigationActionPolicyCancel);
 
-    dmWebView::CallbackInfo cbinfo;
-    cbinfo.m_Info = &g_WebView.m_Info[m_WebViewID];
-    cbinfo.m_WebViewID = m_WebViewID;
-    cbinfo.m_RequestID = m_RequestID;
-    cbinfo.m_Url = [url UTF8String];
-    cbinfo.m_Type = dmWebView::CALLBACK_RESULT_URL_LOADING;
-    cbinfo.m_Result = 0;
-    RunCallback(&cbinfo);
+        // copy request and add headers
+        NSMutableURLRequest *newRequest = [[NSMutableURLRequest alloc] initWithURL:navigationAction.request.URL];
+        for (NSString *header in m_Headers)
+        {
+            NSString *value = m_Headers[header];
+            [newRequest setValue:value forHTTPHeaderField:header];
+        }
+        m_HeadersSet = true;
+
+        // load the new request
+        WKWebView* webview = g_WebView.m_WebViews[m_WebViewID];
+        [webview loadRequest:newRequest];
+    }
+    else
+    {
+        // headers have been set and we proceed to ask the user if
+        // the navigation should be allowed or not
+        NSString *url = navigationAction.request.URL.absoluteString;
+        m_PendingUrl = url;
+        m_DecisionHandler = decisionHandler;
+
+        dmWebView::CallbackInfo cbinfo;
+        cbinfo.m_Info = &g_WebView.m_Info[m_WebViewID];
+        cbinfo.m_WebViewID = m_WebViewID;
+        cbinfo.m_RequestID = m_RequestID;
+        cbinfo.m_Url = [url UTF8String];
+        cbinfo.m_Type = dmWebView::CALLBACK_RESULT_URL_LOADING;
+        cbinfo.m_Result = 0;
+        RunCallback(&cbinfo);
+    }
 }
 
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation
@@ -186,6 +215,7 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
     navigationDelegate->m_RequestID = 0;
     navigationDelegate->m_PendingUrl = NULL;
     navigationDelegate->m_DecisionHandler = NULL;
+    navigationDelegate->m_Headers = [[NSMutableDictionary alloc] init];
     view.navigationDelegate = navigationDelegate;
 
     g_WebView.m_WebViews[webview_id] = view;
@@ -216,6 +246,22 @@ static void DestroyWebView(int webview_id)
     [view removeFromSuperview];
     [view release];
     g_WebView.m_WebViews[webview_id] = NULL;
+}
+
+int Platform_ClearHeaders(lua_State* L, int webview_id)
+{
+    CHECK_WEBVIEW_AND_RETURN();
+    [g_WebView.m_WebViewDelegates[webview_id]->m_Headers removeAllObjects];
+    return 0;
+}
+
+int Platform_AddHeader(lua_State* L, int webview_id, const char* header, const char* value)
+{
+    CHECK_WEBVIEW_AND_RETURN();
+    NSString* ns_header = [NSString stringWithUTF8String: header];
+    NSString* ns_value = [NSString stringWithUTF8String: value];
+    g_WebView.m_WebViewDelegates[webview_id]->m_Headers[ns_header] = ns_value;
+    return 0;
 }
 
 int Platform_Destroy(lua_State* L, int webview_id)
@@ -279,6 +325,7 @@ int Platform_ContinueOpen(lua_State* L, int webview_id, int request_id, const ch
     if ([delegate->m_PendingUrl isEqualToString:[NSString stringWithUTF8String: url]]) {
         delegate->m_DecisionHandler(WKNavigationActionPolicyAllow);
         delegate->m_DecisionHandler = NULL;
+        delegate->m_HeadersSet = false;
     }
     return request_id;
 }
@@ -290,6 +337,7 @@ int Platform_CancelOpen(lua_State* L, int webview_id, int request_id, const char
     if ([delegate->m_PendingUrl isEqualToString:[NSString stringWithUTF8String: url]]) {
         delegate->m_DecisionHandler(WKNavigationActionPolicyCancel);
         delegate->m_DecisionHandler = NULL;
+        delegate->m_HeadersSet = false;
     }
     return request_id;
 }

@@ -68,6 +68,8 @@ struct WebViewExtensionState
     jmethodID               m_SetVisible;
     jmethodID               m_IsVisible;
     jmethodID               m_SetPosition;
+    jmethodID               m_AddHeader;
+    jmethodID               m_ClearHeaders;
     dmMutex::HMutex         m_Mutex;
     dmArray<WebViewCommand> m_CmdQueue;
 };
@@ -178,6 +180,7 @@ int Platform_Eval(lua_State* L, int webview_id, const char* code)
     JNIEnv* env = threadAttacher.GetEnv();
     jstring jcode = env->NewStringUTF(code);
     env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_Eval, jcode, webview_id, request_id);
+    env->DeleteLocalRef(jcode);
     return request_id;
 }
 
@@ -214,6 +217,28 @@ int Platform_SetPosition(lua_State* L, int webview_id, int x, int y, int width, 
     dmAndroid::ThreadAttacher threadAttacher;
     JNIEnv* env = threadAttacher.GetEnv();
     env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_SetPosition, webview_id, x, y, width, height);
+    return 0;
+}
+
+int Platform_ClearHeaders(lua_State* L, int webview_id)
+{
+    CHECK_WEBVIEW_AND_RETURN();
+    dmAndroid::ThreadAttacher threadAttacher;
+    JNIEnv* env = threadAttacher.GetEnv();
+    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_ClearHeaders, webview_id);
+    return 0;
+}
+
+int Platform_AddHeader(lua_State* L, int webview_id, const char* header, const char* value)
+{
+    CHECK_WEBVIEW_AND_RETURN();
+    dmAndroid::ThreadAttacher threadAttacher;
+    JNIEnv* env = threadAttacher.GetEnv();
+    jstring jheader = env->NewStringUTF(header);
+    jstring jvalue = env->NewStringUTF(value);
+    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_AddHeader, webview_id, jheader, jvalue);
+    env->DeleteLocalRef(jheader);
+    env->DeleteLocalRef(jvalue);
     return 0;
 }
 
@@ -401,6 +426,8 @@ dmExtension::Result Platform_AppInitialize(dmExtension::AppParams* params)
     g_WebView.m_SetTransparent = env->GetMethodID(webview_class, "setTransparent", "(II)V");
     g_WebView.m_IsVisible = env->GetMethodID(webview_class, "isVisible", "(I)I");
     g_WebView.m_SetPosition = env->GetMethodID(webview_class, "setPosition", "(IIIII)V");
+    g_WebView.m_AddHeader = env->GetMethodID(webview_class, "addHeader", "(ILjava/lang/String;Ljava/lang/String;)V");
+    g_WebView.m_ClearHeaders = env->GetMethodID(webview_class, "clearHeaders", "(I)V");
 
     int32_t immersiveMode = dmConfigFile::GetInt(params->m_ConfigFile, "android.immersive_mode", 0);
     int32_t displayCutout = dmConfigFile::GetInt(params->m_ConfigFile, "android.display_cutout", 1);

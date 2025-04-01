@@ -111,6 +111,9 @@
           - name: hidden
             type: boolean
             desc: If true, the webview will stay hidden (default=false)
+          - name: headers
+            type: table
+            desc: A table of header keys and values
           - name: transparent
             type: boolean
             desc: If true, the webview background will be transparent (default=false)

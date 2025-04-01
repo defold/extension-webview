@@ -20,15 +20,23 @@ import android.view.WindowInsetsController;
 import android.widget.LinearLayout;
 import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
+import android.webkit.MimeTypeMap;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebSettings;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 
 import android.graphics.PixelFormat;
 import android.graphics.Color;
 
 import android.util.Log;
+
+import java.util.Map;
+import java.util.HashMap;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 
 public class WebViewJNI {
@@ -55,6 +63,7 @@ public class WebViewJNI {
         private String continueLoadingUrl;
         private WebViewJNI webviewJNI;
         private String PACKAGE_NAME;
+        private Map<String, String> extraHeaders = new HashMap<>();
 
         // This is a hack to counter for the case where the load() experiences an error
         // In that case, the onReceivedError will be called, and onPageFinished will be called TWICE
@@ -68,6 +77,19 @@ public class WebViewJNI {
             this.webviewID = webview_id;
             PACKAGE_NAME = activity.getApplicationContext().getPackageName();
             reset(-1);
+        }
+
+        public void addHeader(final String header, final String value) {
+            if (value == null) {
+                extraHeaders.remove(header);
+            }
+            else {
+                extraHeaders.put(header, value);
+            }
+        }
+
+        public void clearHeaders() {
+            extraHeaders.clear();
         }
 
         private String trimTrailingSlash(String url) {
@@ -96,6 +118,36 @@ public class WebViewJNI {
         private boolean shouldContinueLoadingUrl(String url) {
             if (continueLoadingUrl == null) return false;
             return trimTrailingSlash(continueLoadingUrl).equals(trimTrailingSlash(url));
+        }
+
+        @Override
+        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+            final String method = request.getMethod();
+            final String url = request.getUrl().toString();
+            String ext = MimeTypeMap.getFileExtensionFromUrl(url);
+            String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
+
+            try {
+                HttpURLConnection conn = (HttpURLConnection)new URL(url).openConnection();
+                conn.setRequestMethod(method);
+                for (String header : extraHeaders.keySet()) {
+                    String value = extraHeaders.get(header);
+                    conn.setRequestProperty(header, value);
+                }
+                conn.setDoInput(true);
+                conn.setUseCaches(false);
+
+                return new WebResourceResponse(
+                    mime,
+                    conn.getContentEncoding(),
+                    conn.getInputStream()
+                );
+
+            }
+            catch (Exception e) {
+                Log.e(TAG, "shouldInterceptRequest: " + e);
+            }
+            return null;
         }
 
         @Override
@@ -351,6 +403,14 @@ public class WebViewJNI {
                 }
             }
         });
+    }
+
+    public void addHeader(final int webview_id, final String header, final String value) {
+        WebViewJNI.this.infos[webview_id].webviewClient.addHeader(header, value);
+    }
+
+    public void clearHeaders(final int webview_id) {
+        WebViewJNI.this.infos[webview_id].webviewClient.clearHeaders();
     }
 
     public void loadRaw(final String html, final int webview_id, final int request_id, final int hidden, final int transparent) {
