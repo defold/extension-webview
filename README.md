@@ -1,4 +1,4 @@
-[![Actions Status Alpha](https://github.com/defold/extension-webview/actions/workflows/bob.yml/badge.svg)](https://github.com/defold/extension-webview/actions)
+[![Build Status](https://github.com/defold/extension-webview/actions/workflows/bob.yml/badge.svg)](https://github.com/defold/extension-webview/actions)
 
 # Defold webview extension
 
