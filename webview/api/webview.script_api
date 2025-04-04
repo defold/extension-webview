@@ -95,6 +95,7 @@
         desc: The webview id (returned by the `webview.create()` call)
 
   - name: open
+    type: function
     desc: Opens a web page in the webview, using an URL.
           Once the request is done, the callback (registered in `webview.create()`) is invoked.
     parameters:
