@@ -1,0 +1,5 @@
+# Native code loads the WebView bridge and invokes its methods by name.
+-keep,allowoptimization class com.defold.webview.** { *; }
+
+# Preserve the runtime annotation used by the JavaScript interface bridge.
+-keepattributes *Annotation*
