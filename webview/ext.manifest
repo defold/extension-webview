@@ -5,14 +5,7 @@ platforms:
     context:
         frameworks: ["WebKit"]
 
-  arm64-ios:
+  ios:
     context:
         frameworks: ["WebKit"]
 
-  armv7-ios:
-    context:
-        frameworks: ["WebKit"]
-
-  x86_64-ios:
-    context:
-        frameworks: ["WebKit"]
