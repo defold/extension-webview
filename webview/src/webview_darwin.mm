@@ -55,7 +55,7 @@ struct Command
 
 struct WebViewExtensionState
 {
-    WebViewExtensionState()
+    WebViewExtensionState() : m_Mutex(0), m_AcceptCommands(false)
     {
         Clear();
     }
@@ -75,6 +75,7 @@ struct WebViewExtensionState
     WKWebView*              m_WebViews[dmWebView::MAX_NUM_WEBVIEWS];
     WebViewDelegate*        m_WebViewDelegates[dmWebView::MAX_NUM_WEBVIEWS];
     dmMutex::HMutex         m_Mutex;
+    bool                    m_AcceptCommands;
     dmArray<Command>        m_CmdQueue;
 };
 
@@ -232,7 +233,17 @@ static char* CopyString(NSString* s)
 
 static void QueueCommand(Command* cmd)
 {
+    if (!g_WebView.m_Mutex)
+    {
+        FreeCommand(*cmd);
+        return;
+    }
     DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
+    if (!g_WebView.m_AcceptCommands)
+    {
+        FreeCommand(*cmd);
+        return;
+    }
     if (g_WebView.m_CmdQueue.Full())
     {
         g_WebView.m_CmdQueue.OffsetCapacity(8);
@@ -240,6 +251,20 @@ static void QueueCommand(Command* cmd)
     g_WebView.m_CmdQueue.Push(*cmd);
 }
 
+static void FinalizeCommands()
+{
+    if (!g_WebView.m_Mutex)
+        return;
+
+    dmArray<Command> pending;
+    {
+        DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
+        g_WebView.m_AcceptCommands = false;
+        pending.Swap(g_WebView.m_CmdQueue);
+    }
+    for (uint32_t i = 0; i != pending.Size(); ++i)
+        FreeCommand(pending[i]);
+}
 
 namespace dmWebView
 {
@@ -474,26 +499,34 @@ int Platform_SetPosition(lua_State* L, int webview_id, int x, int y, int width, 
 
 dmExtension::Result Platform_AppInitialize(dmExtension::AppParams* params)
 {
-    g_WebView.Clear();
-    g_WebView.m_Mutex = dmMutex::New();
-    g_WebView.m_CmdQueue.SetCapacity(8);
+    if (!g_WebView.m_Mutex)
+        g_WebView.m_Mutex = dmMutex::New();
+    {
+        DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
+        g_WebView.m_CmdQueue.SetCapacity(8);
+    }
 
     return dmExtension::RESULT_OK;
 }
 
 dmExtension::Result Platform_AppFinalize(dmExtension::AppParams* params)
 {
-    dmMutex::Delete(g_WebView.m_Mutex);
+    FinalizeCommands();
+    // WebKit completions can outlive finalization. Keep the mutex alive so late
+    // producers can safely observe the closed queue.
     return dmExtension::RESULT_OK;
 }
 
 dmExtension::Result Platform_Initialize(dmExtension::Params* params)
 {
+    DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
+    g_WebView.m_AcceptCommands = true;
     return dmExtension::RESULT_OK;
 }
 
 dmExtension::Result Platform_Finalize(dmExtension::Params* params)
 {
+    FinalizeCommands();
     for( int i = 0; i < dmWebView::MAX_NUM_WEBVIEWS; ++i )
     {
         if (g_WebView.m_WebViews[i]) {
@@ -501,29 +534,17 @@ dmExtension::Result Platform_Finalize(dmExtension::Params* params)
         }
     }
 
-    DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
-    for (uint32_t i=0; i != g_WebView.m_CmdQueue.Size(); ++i)
-    {
-        const Command& cmd = g_WebView.m_CmdQueue[i];
-        if (cmd.m_Url) {
-            free((void*)cmd.m_Url);
-        }
-    }
-    g_WebView.m_CmdQueue.SetSize(0);
     return dmExtension::RESULT_OK;
 }
 
 
 dmExtension::Result Platform_Update(dmExtension::Params* params)
 {
-    if (g_WebView.m_CmdQueue.Empty())
-    {
-        return dmExtension::RESULT_OK; // avoid a lock (~300us on iPhone 4s)
-    }
-
     dmArray<Command> tmp;
     {
         DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
+        if (!g_WebView.m_AcceptCommands || g_WebView.m_CmdQueue.Empty())
+            return dmExtension::RESULT_OK;
         tmp.Swap(g_WebView.m_CmdQueue);
     }
     for (uint32_t i=0; i != tmp.Size(); ++i)

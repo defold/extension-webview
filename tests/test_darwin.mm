@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <stdio.h>
 #include <functional>
+#include <atomic>
+#include <thread>
 #include "../webview/src/webview_darwin.mm"
 
 static int g_Delivered;
@@ -115,15 +117,70 @@ static void TestPendingDecision()
     assert(!g_WebView.m_Info[0].m_Callback && !g_WebView.m_WebViewDelegates[0]);
 }
 
+// Verifies queue reads and writes remain synchronized while update drains events.
+static void TestConcurrentUpdate()
+{
+    uint64_t generation = NewView();
+    std::atomic<bool> finished(false);
+    g_Delivered = 0;
+    std::thread producer([&] {
+        for (int i = 0; i < 1000; ++i) QueueEvent(generation);
+        finished.store(true);
+    });
+    while (!finished.load()) dmWebView::Platform_Update(0);
+    producer.join();
+    dmWebView::Platform_Update(0);
+    assert(g_Delivered == 1000);
+}
+
+// Verifies pending and concurrently arriving events are discarded during shutdown.
+static void TestShutdown()
+{
+    uint64_t generation = NewView();
+    QueueEvent(generation);
+    std::atomic<bool> start(false);
+    std::thread producer([&] {
+        while (!start.load()) std::this_thread::yield();
+        for (int i = 0; i < 1000; ++i) QueueEvent(generation);
+    });
+    start.store(true);
+    dmWebView::Platform_Finalize(0);
+    producer.join();
+    assert(g_WebView.m_CmdQueue.Empty());
+    assert(!g_WebView.m_AcceptCommands);
+
+    dmMutex::HMutex mutex = g_WebView.m_Mutex;
+    dmWebView::Platform_AppFinalize(0);
+    QueueEvent(generation);
+    assert(g_WebView.m_Mutex == mutex);
+    assert(g_WebView.m_CmdQueue.Empty());
+
+    // Reopening the queue must still reject results from the previous lifetime.
+    dmWebView::Platform_AppInitialize(0);
+    dmWebView::Platform_Initialize(0);
+    assert(g_WebView.m_Mutex == mutex);
+    uint64_t current = NewView();
+    g_Delivered = 0;
+    QueueEvent(generation);
+    QueueEvent(current);
+    dmWebView::Platform_Update(0);
+    assert(g_Delivered == 1);
+    dmWebView::ClearWebViewInfo(&g_WebView.m_Info[0]);
+}
+
 int main()
 {
     @autoreleasepool
     {
+        QueueEvent(1);
+        assert(g_WebView.m_CmdQueue.Empty());
         dmWebView::Platform_AppInitialize(0);
         dmWebView::Platform_Initialize(0);
         TestQueuedEvents();
         TestStaleDelegate();
         TestPendingDecision();
+        TestConcurrentUpdate();
+        TestShutdown();
         dmWebView::Platform_Finalize(0);
         dmWebView::Platform_AppFinalize(0);
     }

@@ -10,6 +10,7 @@ import tempfile
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--defold-home", default=os.environ.get("WEBVIEW_DEFOLD_HOME"),
                     help="Defold build/install directory containing sdk/include and lib/<platform>")
+parser.add_argument("--sanitizer", choices=["address", "thread"], default="address")
 args = parser.parse_args()
 if not args.defold_home:
     parser.error("provide --defold-home or WEBVIEW_DEFOLD_HOME")
@@ -20,7 +21,7 @@ root = Path(__file__).resolve().parents[1]
 host = "arm64-macos" if platform.machine() == "arm64" else "x86_64-macos"
 with tempfile.TemporaryDirectory(prefix="webview-tests-") as directory:
     common_flags = [
-        "clang++", "-std=c++11", "-g", "-fsanitize=address,undefined",
+        "clang++", "-std=c++11", "-g", "-fsanitize=" + args.sanitizer + ",undefined",
         "-fno-omit-frame-pointer", "-Wl,-dead_strip", "-Wno-nontrivial-memcall",
         "-DDM_PLATFORM_OSX", '-DDLIB_LOG_DOMAIN="WEBVIEW_TEST"',
         "-I" + str(sdk / "sdk/include"), "-I" + str(sdk / "include"),
