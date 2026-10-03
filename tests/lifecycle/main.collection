@@ -1,0 +1,8 @@
+name: "main"
+embedded_instances {
+  id: "main"
+  data: "components {\n"
+  "  id: \"script\"\n"
+  "  component: \"/main.script\"\n"
+  "}\n"
+}

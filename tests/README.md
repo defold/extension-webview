@@ -17,3 +17,18 @@ including invalid IDs, slot reuse within one drained batch, and cancellation of
 pending navigation decisions. These tests use platform/script-boundary test
 doubles and create no browser windows; they do not replace testing the native
 WebView lifecycle on Android and Apple devices.
+
+## Device regression project
+
+Copy `tests/lifecycle` to a temporary directory, then copy this checkout's
+`webview` directory into that project. Open its `game.project` in Defold and
+bundle it for Android, iOS, or macOS. It has no remote dependencies.
+
+The project destroys an unopened view, repeatedly destroys/recreates views in
+the same slot while JavaScript emits events, alternates visible and hidden views,
+and destroys a view from inside its callback. It must print
+`WebView lifecycle regression passed` and exit without crashes, assertion errors,
+callbacks after destruction, or events delivered to a replacement view.
+
+Run Android debug and release bundles, including armeabi-v7a, for issue #40.
+The host runner checks this script's Lua syntax but does not execute the device test.

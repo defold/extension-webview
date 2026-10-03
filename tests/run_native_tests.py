@@ -35,4 +35,5 @@ with tempfile.TemporaryDirectory(prefix="webview-tests-") as directory:
         executable = Path(directory) / name
         subprocess.run(common_flags + [str(root / source) for source in sources] +
                        flags + ["-o", str(executable)], check=True)
-        subprocess.run([str(executable)], check=True)
+        arguments = [str(root / "tests/lifecycle/main.script")] if name == "test_callbacks" else []
+        subprocess.run([str(executable)] + arguments, check=True)

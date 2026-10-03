@@ -166,7 +166,7 @@ static void TestStaleGeneration(lua_State* L)
     dmWebView::ClearWebViewInfo(&g_Info);
 }
 
-int main()
+int main(int argc, char** argv)
 {
     lua_State* L = luaL_newstate();
     luaL_openlibs(L);
@@ -198,6 +198,13 @@ int main()
     TestStaleGeneration(L);
     assert(dmScript::GetLuaRefCount() == references);
     assert(lua_gettop(L) == 0);
+    for (int i = 1; i < argc; ++i)
+    {
+        int result = luaL_loadfile(L, argv[i]);
+        if (result) fprintf(stderr, "%s\n", lua_tostring(L, -1));
+        assert(result == 0);
+        lua_pop(L, 1);
+    }
     lua_close(L);
     puts("Callback lifecycle tests passed (real Defold Lua/script libraries).");
     return 0;

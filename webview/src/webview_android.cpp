@@ -120,11 +120,11 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
 static int DestroyWebView(int webview_id)
 {
     CHECK_WEBVIEW_AND_RETURN();
+    ClearWebViewInfo(&g_WebView.m_Info[webview_id]);
+    g_WebView.m_Used[webview_id] = false;
     dmAndroid::ThreadAttacher threadAttacher;
     JNIEnv* env = threadAttacher.GetEnv();
     env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_Destroy, webview_id);
-    ClearWebViewInfo(&g_WebView.m_Info[webview_id]);
-    g_WebView.m_Used[webview_id] = false;
     return 0;
 }
 
