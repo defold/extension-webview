@@ -1,6 +1,7 @@
 #if defined(DM_PLATFORM_ANDROID) || defined(DM_PLATFORM_IOS) || defined (DM_PLATFORM_OSX)
 
 #include <assert.h>
+#include <dmsdk/dlib/array.h>
 #include <dmsdk/dlib/log.h>
 
 #include "webview_common.h"
@@ -8,28 +9,32 @@
 namespace dmWebView
 {
 
+static uint32_t g_CallbackInvocationDepth = 0;
+static dmArray<dmScript::LuaCallbackInfo*> g_DeferredCallbacks;
+
+static void FlushDeferredCallbacks()
+{
+    if (g_CallbackInvocationDepth != 0)
+        return;
+
+    for (uint32_t i = 0; i != g_DeferredCallbacks.Size(); ++i)
+        dmScript::DestroyCallback(g_DeferredCallbacks[i]);
+    g_DeferredCallbacks.SetSize(0);
+}
+
 void RunCallback(CallbackInfo* cbinfo)
 {
-    if (cbinfo->m_Info->m_Callback == LUA_NOREF)
+    dmScript::LuaCallbackInfo* callback = cbinfo->m_Info->m_Callback;
+    if (!dmScript::IsCallbackValid(callback))
     {
-        dmLogError("No callback set");
+        return;
     }
 
-    lua_State* L = cbinfo->m_Info->m_L;
+    lua_State* L = dmScript::GetCallbackLuaContext(callback);
     int top = lua_gettop(L);
 
-    lua_rawgeti(L, LUA_REGISTRYINDEX, cbinfo->m_Info->m_Callback);
-    // Setup self
-    lua_rawgeti(L, LUA_REGISTRYINDEX, cbinfo->m_Info->m_Self);
-    lua_pushvalue(L, -1);
-
-    dmScript::SetInstance(L);
-
-    if (!dmScript::IsInstanceValid(L))
+    if (!dmScript::SetupCallback(callback))
     {
-        dmLogError("Could not run WebView callback because the instance has been deleted.");
-        lua_pop(L, 2);
-        assert(top == lua_gettop(L));
         return;
     }
 
@@ -56,35 +61,47 @@ void RunCallback(CallbackInfo* cbinfo)
     lua_rawset(L, -3);
 
 
-    int ret = lua_pcall(L, 5, 1, 0);
-    if (ret != 0) {
-        dmLogError("Error running WebView callback: %s", lua_tostring(L,-1));
-        lua_pop(L, 1);
-    } else {
-        if (cbinfo->m_Type == dmWebView::CALLBACK_RESULT_URL_LOADING) {
-            // returning either nothing (nil) or a boolean true should continue
-            // to load the url
-            if (lua_isnil(L, 1) || lua_toboolean(L, 1) == 1) {
-               Platform_ContinueOpen(L, cbinfo->m_WebViewID, cbinfo->m_RequestID, cbinfo->m_Url);
-            }
-            else {
-                Platform_CancelOpen(L, cbinfo->m_WebViewID, cbinfo->m_RequestID, cbinfo->m_Url);
-            }
-        }
+    // Lua may destroy this view (and create another in the same slot). Keep the
+    // original callback rooted until its stack and script context are restored.
+    ++g_CallbackInvocationDepth;
+    int ret = dmScript::PCall(L, 5, 1);
+    bool allow_navigation = false;
+    if (ret == 0)
+    {
+        allow_navigation = lua_isnil(L, -1) || lua_toboolean(L, -1);
         lua_pop(L, 1);
     }
+    dmScript::TeardownCallback(callback);
     assert(top == lua_gettop(L));
+
+    if (cbinfo->m_Type == CALLBACK_RESULT_URL_LOADING &&
+        cbinfo->m_Info->m_Callback == callback && dmScript::IsCallbackValid(callback))
+    {
+        if (ret == 0 && allow_navigation)
+            Platform_ContinueOpen(L, cbinfo->m_WebViewID, cbinfo->m_RequestID, cbinfo->m_Url);
+        else
+            Platform_CancelOpen(L, cbinfo->m_WebViewID, cbinfo->m_RequestID, cbinfo->m_Url);
+    }
+
+    --g_CallbackInvocationDepth;
+    FlushDeferredCallbacks();
 }
 
 void ClearWebViewInfo(WebViewInfo* info)
 {
-    if( info->m_Callback != LUA_NOREF )
-        dmScript::Unref(info->m_L, LUA_REGISTRYINDEX, info->m_Callback);
-    if( info->m_Self != LUA_NOREF )
-        dmScript::Unref(info->m_L, LUA_REGISTRYINDEX, info->m_Self);
-    info->m_L = 0;
-    info->m_Callback = LUA_NOREF;
-    info->m_Self = LUA_NOREF;
+    dmScript::LuaCallbackInfo* callback = info->m_Callback;
+    info->m_Callback = 0;
+    if (!callback)
+        return;
+
+    if (g_CallbackInvocationDepth == 0)
+    {
+        dmScript::DestroyCallback(callback);
+        return;
+    }
+    if (g_DeferredCallbacks.Full())
+        g_DeferredCallbacks.OffsetCapacity(4);
+    g_DeferredCallbacks.Push(callback);
 }
 
 /** Creates a web view
@@ -95,24 +112,12 @@ static int Create(lua_State* L)
 {
     int top = lua_gettop(L);
 
-    int index = 1;
-    if (lua_type(L, 1) == LUA_TTABLE)
-    {
-        index = index +1;
-    }
-    luaL_checktype(L, 1, LUA_TFUNCTION);
-
-
-    luaL_checktype(L, 1, LUA_TFUNCTION);
-    lua_pushvalue(L, 1);
-
     WebViewInfo info;
-    info.m_Callback = dmScript::Ref(L, LUA_REGISTRYINDEX);
-    dmScript::GetInstance(L);
-    info.m_Self = dmScript::Ref(L, LUA_REGISTRYINDEX);
-    info.m_L = dmScript::GetMainThread(L);
+    info.m_Callback = dmScript::CreateCallback(L, 1);
 
-    int webview_id = Platform_Create(L, &info); 
+    int webview_id = info.m_Callback ? Platform_Create(L, &info) : -1;
+    if (webview_id < 0)
+        ClearWebViewInfo(&info);
     lua_pushnumber(L, webview_id);
 
     assert(top + 1 == lua_gettop(L));

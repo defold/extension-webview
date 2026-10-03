@@ -20,11 +20,9 @@ enum CallbackResult
 
 struct WebViewInfo
 {
-    lua_State*  m_L;
-    int         m_Self;
-    int         m_Callback;
+    dmScript::LuaCallbackInfo* m_Callback;
 
-    WebViewInfo() : m_L(0), m_Self(LUA_NOREF), m_Callback(LUA_NOREF) {}
+    WebViewInfo() : m_Callback(0) {}
 };
 
 struct RequestInfo

@@ -185,7 +185,7 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
     int webview_id = -1;
     for( int i = 0; i < dmWebView::MAX_NUM_WEBVIEWS; ++i )
     {
-        if( g_WebView.m_Info[i].m_L == 0 )
+        if( g_WebView.m_Info[i].m_Callback == 0 )
         {
             webview_id = i;
             break;
@@ -236,6 +236,13 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
 static void DestroyWebView(int webview_id)
 {
     ClearWebViewInfo(&g_WebView.m_Info[webview_id]);
+    WebViewDelegate* delegate = g_WebView.m_WebViewDelegates[webview_id];
+    if (delegate && delegate->m_DecisionHandler)
+    {
+        void (^handler)(WKNavigationActionPolicy) = delegate->m_DecisionHandler;
+        delegate->m_DecisionHandler = NULL;
+        handler(WKNavigationActionPolicyCancel);
+    }
     WKWebView *view = g_WebView.m_WebViews[webview_id];
     #if defined(DM_PLATFORM_OSX)
     NSWindow *window = dmGraphics::GetNativeOSXNSWindow();
