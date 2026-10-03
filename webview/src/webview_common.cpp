@@ -11,6 +11,16 @@ namespace dmWebView
 
 static uint32_t g_CallbackInvocationDepth = 0;
 static dmArray<dmScript::LuaCallbackInfo*> g_DeferredCallbacks;
+// Only accessed on the script thread. Preserve this across extension restarts.
+static uint64_t g_NextGeneration = 0;
+
+void CreateWebViewInfo(WebViewInfo* info, lua_State* L, int callback_index)
+{
+    info->m_Callback = dmScript::CreateCallback(L, callback_index);
+    if (++g_NextGeneration == 0)
+        ++g_NextGeneration;
+    info->m_Generation = g_NextGeneration;
+}
 
 static void FlushDeferredCallbacks()
 {
@@ -24,9 +34,14 @@ static void FlushDeferredCallbacks()
 
 void RunCallback(CallbackInfo* cbinfo)
 {
+    if (cbinfo->m_Generation != cbinfo->m_Info->m_Generation)
+        return;
+
     dmScript::LuaCallbackInfo* callback = cbinfo->m_Info->m_Callback;
     if (!dmScript::IsCallbackValid(callback))
     {
+        if (callback && cbinfo->m_Type == CALLBACK_RESULT_URL_LOADING)
+            Platform_CancelOpen(0, cbinfo->m_WebViewID, cbinfo->m_RequestID, cbinfo->m_Url);
         return;
     }
 
@@ -35,6 +50,8 @@ void RunCallback(CallbackInfo* cbinfo)
 
     if (!dmScript::SetupCallback(callback))
     {
+        if (cbinfo->m_Type == CALLBACK_RESULT_URL_LOADING)
+            Platform_CancelOpen(L, cbinfo->m_WebViewID, cbinfo->m_RequestID, cbinfo->m_Url);
         return;
     }
 
@@ -75,6 +92,7 @@ void RunCallback(CallbackInfo* cbinfo)
     assert(top == lua_gettop(L));
 
     if (cbinfo->m_Type == CALLBACK_RESULT_URL_LOADING &&
+        cbinfo->m_Generation == cbinfo->m_Info->m_Generation &&
         cbinfo->m_Info->m_Callback == callback && dmScript::IsCallbackValid(callback))
     {
         if (ret == 0 && allow_navigation)
@@ -113,7 +131,7 @@ static int Create(lua_State* L)
     int top = lua_gettop(L);
 
     WebViewInfo info;
-    info.m_Callback = dmScript::CreateCallback(L, 1);
+    CreateWebViewInfo(&info, L, 1);
 
     int webview_id = info.m_Callback ? Platform_Create(L, &info) : -1;
     if (webview_id < 0)

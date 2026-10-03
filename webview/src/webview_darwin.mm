@@ -30,6 +30,7 @@ struct Command
         memset(this, 0, sizeof(*this));
     }
     CommandType m_Type;
+    uint64_t    m_Generation;
     int         m_WebViewID;
     int         m_RequestID;
     void*       m_Data;
@@ -42,12 +43,14 @@ struct Command
 #endif
 {
     @public int m_WebViewID;
+    @public uint64_t m_Generation;
     @public int m_RequestID;
     @public NSString *m_PendingUrl;
     @public bool m_HeadersSet;
     @public NSMutableDictionary* m_Headers;
     @public void (^m_DecisionHandler)(WKNavigationActionPolicy);
 }
+- (void)resolveNavigation:(WKNavigationActionPolicy)policy;
 @end
 
 struct WebViewExtensionState
@@ -77,19 +80,70 @@ struct WebViewExtensionState
 
 WebViewExtensionState g_WebView;
 
+static bool IsWebViewCurrent(int webview_id, uint64_t generation)
+{
+    return webview_id >= 0 && webview_id < dmWebView::MAX_NUM_WEBVIEWS &&
+           g_WebView.m_Info[webview_id].m_Callback &&
+           g_WebView.m_Info[webview_id].m_Generation == generation;
+}
+
+static void FreeCommand(const Command& cmd)
+{
+    free((void*)cmd.m_Url);
+    free(cmd.m_Data);
+}
 
 @implementation WebViewDelegate
 
+- (BOOL)isCurrentView:(WKWebView*)view
+{
+    return IsWebViewCurrent(m_WebViewID, m_Generation) &&
+           g_WebView.m_WebViews[m_WebViewID] == view;
+}
+
+- (void)resolveNavigation:(WKNavigationActionPolicy)policy
+{
+    void (^handler)(WKNavigationActionPolicy) = m_DecisionHandler;
+    m_DecisionHandler = nil;
+    [m_PendingUrl release];
+    m_PendingUrl = nil;
+    m_HeadersSet = false;
+    if (handler)
+    {
+        handler(policy);
+        [handler release];
+    }
+}
+
+- (void)dealloc
+{
+    [m_DecisionHandler release];
+    [m_PendingUrl release];
+    [m_Headers release];
+    [super dealloc];
+}
+
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
 {
+    // Lua can destroy this delegate's view during any callback below.
+    [[self retain] autorelease];
+    if (![self isCurrentView:webView])
+    {
+        decisionHandler(WKNavigationActionPolicyCancel);
+        return;
+    }
     // cancel existing decision handler
     // if this happens it means that we have navigated to a new page
     // before the previous callback completed
     // if we don't make a decision we'll get an error
     if (m_DecisionHandler)
     {
-        m_DecisionHandler(WKNavigationActionPolicyCancel);
-        m_DecisionHandler = NULL;
+        [self resolveNavigation:WKNavigationActionPolicyCancel];
+    }
+    if (![self isCurrentView:webView])
+    {
+        decisionHandler(WKNavigationActionPolicyCancel);
+        return;
     }
 
     // if headers have not been set we first copy the request
@@ -110,18 +164,20 @@ WebViewExtensionState g_WebView;
         m_HeadersSet = true;
 
         // load the new request
-        WKWebView* webview = g_WebView.m_WebViews[m_WebViewID];
-        [webview loadRequest:newRequest];
+        if ([self isCurrentView:webView])
+            [webView loadRequest:newRequest];
+        [newRequest release];
     }
     else
     {
         // headers have been set and we proceed to ask the user if
         // the navigation should be allowed or not
         NSString *url = navigationAction.request.URL.absoluteString;
-        m_PendingUrl = url;
-        m_DecisionHandler = decisionHandler;
+        m_PendingUrl = [url copy];
+        m_DecisionHandler = [decisionHandler copy];
 
         dmWebView::CallbackInfo cbinfo;
+        cbinfo.m_Generation = m_Generation;
         cbinfo.m_Info = &g_WebView.m_Info[m_WebViewID];
         cbinfo.m_WebViewID = m_WebViewID;
         cbinfo.m_RequestID = m_RequestID;
@@ -134,7 +190,11 @@ WebViewExtensionState g_WebView;
 
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation
 {
+    if (![self isCurrentView:webView])
+        return;
+    [[self retain] autorelease];
     dmWebView::CallbackInfo cbinfo;
+    cbinfo.m_Generation = m_Generation;
     cbinfo.m_Info = &g_WebView.m_Info[m_WebViewID];
     cbinfo.m_WebViewID = m_WebViewID;
     cbinfo.m_RequestID = m_RequestID;
@@ -146,7 +206,11 @@ WebViewExtensionState g_WebView;
 
 - (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error
 {
+    if (![self isCurrentView:webView])
+        return;
+    [[self retain] autorelease];
     dmWebView::CallbackInfo cbinfo;
+    cbinfo.m_Generation = m_Generation;
     cbinfo.m_Info = &g_WebView.m_Info[m_WebViewID];
     cbinfo.m_WebViewID = m_WebViewID;
     cbinfo.m_RequestID = m_RequestID;
@@ -210,13 +274,15 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
     WKWebViewConfiguration *configuration = [[WKWebViewConfiguration alloc] init];
     WKWebView *view = [[WKWebView alloc] initWithFrame:gameFrame configuration:configuration];
 #endif
-    WebViewDelegate* navigationDelegate = [WebViewDelegate alloc];
+    WebViewDelegate* navigationDelegate = [[WebViewDelegate alloc] init];
     navigationDelegate->m_WebViewID = webview_id;
+    navigationDelegate->m_Generation = _info->m_Generation;
     navigationDelegate->m_RequestID = 0;
     navigationDelegate->m_PendingUrl = NULL;
     navigationDelegate->m_DecisionHandler = NULL;
     navigationDelegate->m_Headers = [[NSMutableDictionary alloc] init];
     view.navigationDelegate = navigationDelegate;
+    [configuration release];
 
     g_WebView.m_WebViews[webview_id] = view;
     g_WebView.m_WebViewDelegates[webview_id] = navigationDelegate;
@@ -231,19 +297,18 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
     return webview_id;
 }
 
-#define CHECK_WEBVIEW_AND_RETURN() if( webview_id >= dmWebView::MAX_NUM_WEBVIEWS || webview_id < 0 ) { dmLogError("%s: Invalid webview_id: %d", __FUNCTION__, webview_id); return -1; }
+#define CHECK_WEBVIEW_AND_RETURN() if( webview_id >= dmWebView::MAX_NUM_WEBVIEWS || webview_id < 0 || !g_WebView.m_Info[webview_id].m_Callback ) { dmLogError("%s: Invalid webview_id: %d", __FUNCTION__, webview_id); return -1; }
 
 static void DestroyWebView(int webview_id)
 {
     ClearWebViewInfo(&g_WebView.m_Info[webview_id]);
     WebViewDelegate* delegate = g_WebView.m_WebViewDelegates[webview_id];
-    if (delegate && delegate->m_DecisionHandler)
-    {
-        void (^handler)(WKNavigationActionPolicy) = delegate->m_DecisionHandler;
-        delegate->m_DecisionHandler = NULL;
-        handler(WKNavigationActionPolicyCancel);
-    }
     WKWebView *view = g_WebView.m_WebViews[webview_id];
+    g_WebView.m_WebViews[webview_id] = nil;
+    g_WebView.m_WebViewDelegates[webview_id] = nil;
+    view.navigationDelegate = nil;
+    [delegate resolveNavigation:WKNavigationActionPolicyCancel];
+    [view stopLoading];
     #if defined(DM_PLATFORM_OSX)
     NSWindow *window = dmGraphics::GetNativeOSXNSWindow();
     if ([window firstResponder] == view) {
@@ -252,7 +317,7 @@ static void DestroyWebView(int webview_id)
     #endif
     [view removeFromSuperview];
     [view release];
-    g_WebView.m_WebViews[webview_id] = NULL;
+    [delegate release];
 }
 
 int Platform_ClearHeaders(lua_State* L, int webview_id)
@@ -305,24 +370,26 @@ int Platform_SetTransparent(lua_State* L, int webview_id, int transparent)
 int Platform_Open(lua_State* L, int webview_id, const char* url, dmWebView::RequestInfo* options)
 {
     CHECK_WEBVIEW_AND_RETURN();
+    int request_id = ++g_WebView.m_WebViewDelegates[webview_id]->m_RequestID;
     Platform_SetVisibleInternal(g_WebView.m_WebViews[webview_id], !options->m_Hidden);
     Platform_SetTransparentInternal(g_WebView.m_WebViews[webview_id], options->m_Transparent);
 
     NSURL* ns_url = [NSURL URLWithString: [NSString stringWithUTF8String: url]];
     NSURLRequest* request = [NSURLRequest requestWithURL: ns_url];
     [g_WebView.m_WebViews[webview_id] loadRequest:request];
-    return ++g_WebView.m_WebViewDelegates[webview_id]->m_RequestID;
+    return request_id;
 }
 
 int Platform_OpenRaw(lua_State* L, int webview_id, const char* html, dmWebView::RequestInfo* options)
 {
     CHECK_WEBVIEW_AND_RETURN();
+    int request_id = ++g_WebView.m_WebViewDelegates[webview_id]->m_RequestID;
     Platform_SetVisibleInternal(g_WebView.m_WebViews[webview_id], !options->m_Hidden);
     Platform_SetTransparentInternal(g_WebView.m_WebViews[webview_id], options->m_Transparent);
 
     NSString* ns_html = [NSString stringWithUTF8String: html];
     [g_WebView.m_WebViews[webview_id] loadHTMLString:ns_html baseURL:nil];
-    return ++g_WebView.m_WebViewDelegates[webview_id]->m_RequestID;
+    return request_id;
 }
 
 int Platform_ContinueOpen(lua_State* L, int webview_id, int request_id, const char* url)
@@ -330,9 +397,7 @@ int Platform_ContinueOpen(lua_State* L, int webview_id, int request_id, const ch
     CHECK_WEBVIEW_AND_RETURN();
     WebViewDelegate* delegate = g_WebView.m_WebViewDelegates[webview_id];
     if ([delegate->m_PendingUrl isEqualToString:[NSString stringWithUTF8String: url]]) {
-        delegate->m_DecisionHandler(WKNavigationActionPolicyAllow);
-        delegate->m_DecisionHandler = NULL;
-        delegate->m_HeadersSet = false;
+        [delegate resolveNavigation:WKNavigationActionPolicyAllow];
     }
     return request_id;
 }
@@ -342,9 +407,7 @@ int Platform_CancelOpen(lua_State* L, int webview_id, int request_id, const char
     CHECK_WEBVIEW_AND_RETURN();
     WebViewDelegate* delegate = g_WebView.m_WebViewDelegates[webview_id];
     if ([delegate->m_PendingUrl isEqualToString:[NSString stringWithUTF8String: url]]) {
-        delegate->m_DecisionHandler(WKNavigationActionPolicyCancel);
-        delegate->m_DecisionHandler = NULL;
-        delegate->m_HeadersSet = false;
+        [delegate resolveNavigation:WKNavigationActionPolicyCancel];
     }
     return request_id;
 }
@@ -353,6 +416,7 @@ int Platform_Eval(lua_State* L, int webview_id, const char* code)
 {
     CHECK_WEBVIEW_AND_RETURN();
     int request_id = ++g_WebView.m_WebViewDelegates[webview_id]->m_RequestID;
+    const uint64_t generation = g_WebView.m_Info[webview_id].m_Generation;
 
     [g_WebView.m_WebViews[webview_id] evaluateJavaScript:[NSString stringWithUTF8String: code] completionHandler:^(NSObject *resultObject, NSError *error)
     {
@@ -360,9 +424,10 @@ int Platform_Eval(lua_State* L, int webview_id, const char* code)
         Command cmd;
         cmd.m_Type = (result != nil) ? CMD_EVAL_OK : CMD_EVAL_ERROR;
         cmd.m_WebViewID = webview_id;
+        cmd.m_Generation = generation;
         cmd.m_RequestID = request_id;
         cmd.m_Url = 0;
-        cmd.m_Data = (void*) ((result != nil) ? CopyString(result) : "Error string unavailable on iOS");
+        cmd.m_Data = (void*) ((result != nil) ? CopyString(result) : strdup("Error string unavailable on iOS"));
         QueueCommand(&cmd);
     }];
 
@@ -464,8 +529,14 @@ dmExtension::Result Platform_Update(dmExtension::Params* params)
     for (uint32_t i=0; i != tmp.Size(); ++i)
     {
         const Command& cmd = tmp[i];
+        if (!IsWebViewCurrent(cmd.m_WebViewID, cmd.m_Generation))
+        {
+            FreeCommand(cmd);
+            continue;
+        }
 
         dmWebView::CallbackInfo cbinfo;
+        cbinfo.m_Generation = cmd.m_Generation;
         switch (cmd.m_Type)
         {
         case CMD_EVAL_OK:
@@ -491,12 +562,7 @@ dmExtension::Result Platform_Update(dmExtension::Params* params)
         default:
             assert(false);
         }
-        if (cmd.m_Url) {
-            free((void*)cmd.m_Url);
-        }
-        if (cmd.m_Data) {
-            free(cmd.m_Data);
-        }
+        FreeCommand(cmd);
     }
     return dmExtension::RESULT_OK;
 }

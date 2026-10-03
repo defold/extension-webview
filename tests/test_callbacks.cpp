@@ -41,7 +41,7 @@ static void SetCallback(lua_State* L, const char* body)
     source += body;
     source += " end";
     RunLua(L, source.c_str());
-    g_Info.m_Callback = dmScript::CreateCallback(L, -1);
+    dmWebView::CreateWebViewInfo(&g_Info, L, -1);
     assert(g_Info.m_Callback);
     lua_pop(L, 1);
 }
@@ -54,10 +54,12 @@ static int Replace(lua_State* L)
     return 0;
 }
 
-static void Dispatch(lua_State* L, dmWebView::CallbackResult type = dmWebView::CALLBACK_RESULT_URL_LOADING)
+static void Dispatch(lua_State* L, dmWebView::CallbackResult type = dmWebView::CALLBACK_RESULT_URL_LOADING,
+                     uint64_t generation = 0)
 {
     dmWebView::CallbackInfo event;
     event.m_Info = &g_Info;
+    event.m_Generation = generation ? generation : g_Info.m_Generation;
     event.m_Type = type;
     event.m_WebViewID = 2;
     event.m_RequestID = 7;
@@ -145,6 +147,25 @@ static void TestCallbackError(lua_State* L)
     dmWebView::ClearWebViewInfo(&g_Info);
 }
 
+// Verifies old events cannot reach a new callback after the same slot is reused.
+static void TestStaleGeneration(lua_State* L)
+{
+    RunLua(L, "stale_calls = 0");
+    SetCallback(L, "stale_calls = stale_calls + 1");
+    uint64_t old_generation = g_Info.m_Generation;
+    dmWebView::ClearWebViewInfo(&g_Info);
+    Dispatch(L, dmWebView::CALLBACK_RESULT_EVAL_OK, old_generation);
+    SetCallback(L, "stale_calls = stale_calls + 1");
+    assert(old_generation != g_Info.m_Generation);
+    // Covers both events queued before destruction and late events from the old producer.
+    Dispatch(L, dmWebView::CALLBACK_RESULT_EVAL_OK, old_generation);
+    Dispatch(L, dmWebView::CALLBACK_RESULT_URL_LOADING, old_generation);
+    RunLua(L, "assert(stale_calls == 0)");
+    Dispatch(L, dmWebView::CALLBACK_RESULT_EVAL_OK);
+    RunLua(L, "assert(stale_calls == 1)");
+    dmWebView::ClearWebViewInfo(&g_Info);
+}
+
 int main()
 {
     lua_State* L = luaL_newstate();
@@ -174,6 +195,7 @@ int main()
     TestInvalidCallbacks(L);
     TestReentrantDestruction(L);
     TestCallbackError(L);
+    TestStaleGeneration(L);
     assert(dmScript::GetLuaRefCount() == references);
     assert(lua_gettop(L) == 0);
     lua_close(L);

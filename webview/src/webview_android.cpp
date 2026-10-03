@@ -32,6 +32,7 @@ struct WebViewCommand
         memset(this, 0, sizeof(WebViewCommand));
     }
     CommandType m_Type;
+    uint64_t    m_Generation;
     int         m_WebViewID;
     int         m_RequestID;
     void*       m_Data;
@@ -76,10 +77,16 @@ struct WebViewExtensionState
 
 WebViewExtensionState g_WebView;
 
+static void FreeCommand(const WebViewCommand& cmd)
+{
+    free((void*)cmd.m_Url);
+    free(cmd.m_Data);
+}
+
 namespace dmWebView
 {
 
-#define CHECK_WEBVIEW_AND_RETURN() if( webview_id >= MAX_NUM_WEBVIEWS || webview_id < 0 ) { dmLogError("%s: Invalid webview_id: %d", __FUNCTION__, webview_id); return -1; }
+#define CHECK_WEBVIEW_AND_RETURN() if( webview_id >= MAX_NUM_WEBVIEWS || webview_id < 0 || !g_WebView.m_Used[webview_id] ) { dmLogError("%s: Invalid webview_id: %d", __FUNCTION__, webview_id); return -1; }
 
 int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
 {
@@ -105,7 +112,7 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
 
     dmAndroid::ThreadAttacher threadAttacher;
     JNIEnv* env = threadAttacher.GetEnv();
-    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_Create, webview_id);
+    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_Create, webview_id, (jlong)_info->m_Generation);
 
     return webview_id;
 }
@@ -123,8 +130,7 @@ static int DestroyWebView(int webview_id)
 
 int Platform_Destroy(lua_State* L, int webview_id)
 {
-    DestroyWebView(webview_id);
-    return 0;
+    return DestroyWebView(webview_id);
 }
 
 int Platform_Open(lua_State* L, int webview_id, const char* url, dmWebView::RequestInfo* options)
@@ -267,54 +273,59 @@ static void QueueCommand(WebViewCommand* cmd)
 extern "C" {
 #endif
 
-JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onPageFinished(JNIEnv* env, jobject, jstring url, jint webview_id, jint request_id)
+JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onPageFinished(JNIEnv* env, jobject, jstring url, jint webview_id, jlong generation, jint request_id)
 {
     WebViewCommand cmd;
     cmd.m_Type = CMD_LOAD_OK;
     cmd.m_WebViewID = webview_id;
+    cmd.m_Generation = (uint64_t)generation;
     cmd.m_RequestID = request_id;
     cmd.m_Url = CopyString(env, url);
     QueueCommand(&cmd);
 }
 
-JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onReceivedError(JNIEnv* env, jobject, jstring url, jint webview_id, jint request_id, jstring errorMessage)
+JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onReceivedError(JNIEnv* env, jobject, jstring url, jint webview_id, jlong generation, jint request_id, jstring errorMessage)
 {
     WebViewCommand cmd;
     cmd.m_Type = CMD_LOAD_ERROR;
     cmd.m_WebViewID = webview_id;
+    cmd.m_Generation = (uint64_t)generation;
     cmd.m_RequestID = request_id;
     cmd.m_Url = CopyString(env, url);
     cmd.m_Data = CopyString(env, errorMessage);
     QueueCommand(&cmd);
 }
 
-JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onEvalFinished(JNIEnv* env, jobject, jstring result, jint webview_id, jint request_id)
+JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onEvalFinished(JNIEnv* env, jobject, jstring result, jint webview_id, jlong generation, jint request_id)
 {
     WebViewCommand cmd;
     cmd.m_Type = CMD_EVAL_OK;
     cmd.m_WebViewID = webview_id;
+    cmd.m_Generation = (uint64_t)generation;
     cmd.m_RequestID = request_id;
     cmd.m_Url = 0;
     cmd.m_Data = CopyString(env, result);
     QueueCommand(&cmd);
 }
 
-JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onEvalFailed(JNIEnv* env, jobject, jstring error, jint webview_id, jint request_id)
+JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onEvalFailed(JNIEnv* env, jobject, jstring error, jint webview_id, jlong generation, jint request_id)
 {
     WebViewCommand cmd;
     cmd.m_Type = CMD_EVAL_ERROR;
     cmd.m_WebViewID = webview_id;
+    cmd.m_Generation = (uint64_t)generation;
     cmd.m_RequestID = request_id;
     cmd.m_Url = 0;
     cmd.m_Data = CopyString(env, error);
     QueueCommand(&cmd);
 }
 
-JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onPageLoading(JNIEnv* env, jobject, jstring url, jint webview_id, jint request_id)
+JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onPageLoading(JNIEnv* env, jobject, jstring url, jint webview_id, jlong generation, jint request_id)
 {
     WebViewCommand cmd;
     cmd.m_Type = CMD_LOADING;
     cmd.m_WebViewID = webview_id;
+    cmd.m_Generation = (uint64_t)generation;
     cmd.m_RequestID = request_id;
     cmd.m_Url = CopyString(env, url);
     QueueCommand(&cmd);
@@ -340,8 +351,16 @@ dmExtension::Result Platform_Update(dmExtension::Params* params)
     for (uint32_t i=0; i != tmp.Size(); ++i)
     {
         const WebViewCommand& cmd = tmp[i];
+        if (cmd.m_WebViewID < 0 || cmd.m_WebViewID >= MAX_NUM_WEBVIEWS ||
+            !g_WebView.m_Used[cmd.m_WebViewID] ||
+            cmd.m_Generation != g_WebView.m_Info[cmd.m_WebViewID].m_Generation)
+        {
+            FreeCommand(cmd);
+            continue;
+        }
 
         dmWebView::CallbackInfo cbinfo;
+        cbinfo.m_Generation = cmd.m_Generation;
         switch (cmd.m_Type)
         {
         case CMD_LOADING:
@@ -397,12 +416,7 @@ dmExtension::Result Platform_Update(dmExtension::Params* params)
         default:
             assert(false);
         }
-        if (cmd.m_Url) {
-            free((void*)cmd.m_Url);
-        }
-        if (cmd.m_Data) {
-            free(cmd.m_Data);
-        }
+        FreeCommand(cmd);
     }
     return dmExtension::RESULT_OK;
 }
@@ -416,7 +430,7 @@ dmExtension::Result Platform_AppInitialize(dmExtension::AppParams* params)
     JNIEnv* env = threadAttacher.GetEnv();
     jclass webview_class = dmAndroid::LoadClass(env, "com.defold.webview.WebViewJNI");
 
-    g_WebView.m_Create = env->GetMethodID(webview_class, "create", "(I)V");
+    g_WebView.m_Create = env->GetMethodID(webview_class, "create", "(IJ)V");
     g_WebView.m_Destroy = env->GetMethodID(webview_class, "destroy", "(I)V");
     g_WebView.m_Load = env->GetMethodID(webview_class, "load", "(Ljava/lang/String;IIII)V");
     g_WebView.m_LoadRaw = env->GetMethodID(webview_class, "loadRaw", "(Ljava/lang/String;IIII)V");

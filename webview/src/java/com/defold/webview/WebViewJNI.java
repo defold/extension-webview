@@ -50,15 +50,16 @@ public class WebViewJNI {
     private boolean immersiveMode = false;
     private boolean displayCutout = false;
 
-    public native void onPageLoading(String url, int webview_id, int request_id);
-    public native void onPageFinished(String url, int webview_id, int request_id);
-    public native void onReceivedError(String url, int webview_id, int request_id, String errorMessage);
-    public native void onEvalFinished(String result, int webview_id, int request_id);
-    public native void onEvalFailed(String errorMessage, int webview_id, int request_id);
+    public native void onPageLoading(String url, int webview_id, long generation, int request_id);
+    public native void onPageFinished(String url, int webview_id, long generation, int request_id);
+    public native void onReceivedError(String url, int webview_id, long generation, int request_id, String errorMessage);
+    public native void onEvalFinished(String result, int webview_id, long generation, int request_id);
+    public native void onEvalFailed(String errorMessage, int webview_id, long generation, int request_id);
 
     private static class CustomWebViewClient extends WebViewClient {
         public Activity activity;
         public int webviewID;
+        private final long generation;
         public int requestID;
         private String continueLoadingUrl;
         private WebViewJNI webviewJNI;
@@ -70,11 +71,12 @@ public class WebViewJNI {
         // This guard variable helps to avoid propagating the onPageFinished calls in that case
         private boolean hasError;
 
-        public CustomWebViewClient(Activity activity, WebViewJNI webviewJNI, int webview_id) {
+        public CustomWebViewClient(Activity activity, WebViewJNI webviewJNI, int webview_id, long generation) {
             super();
             this.activity = activity;
             this.webviewJNI = webviewJNI;
             this.webviewID = webview_id;
+            this.generation = generation;
             PACKAGE_NAME = activity.getApplicationContext().getPackageName();
             reset(-1);
         }
@@ -174,7 +176,7 @@ public class WebViewJNI {
             }
             // block the page from loading and ask the client if it should load
             // or not
-            webviewJNI.onPageLoading(url, webviewID, requestID);
+            webviewJNI.onPageLoading(url, webviewID, generation, requestID);
             return true;
         }
 
@@ -185,7 +187,7 @@ public class WebViewJNI {
             // shouldOverrideUrlLoading and then once more if allowed to load
             if (!this.hasError && shouldContinueLoadingUrl(url)) {
                 continueLoadingUrl = null;
-                webviewJNI.onPageFinished(url, webviewID, requestID);
+                webviewJNI.onPageFinished(url, webviewID, generation, requestID);
             }
         }
 
@@ -205,24 +207,26 @@ public class WebViewJNI {
 
             if (!this.hasError) {
                 this.hasError = true;
-                webviewJNI.onReceivedError(failingUrl, webviewID, requestID, description);
+                webviewJNI.onReceivedError(failingUrl, webviewID, generation, requestID, description);
             }
         }
 
         @JavascriptInterface
         public void returnResultToJava(String result) {
-            webviewJNI.onEvalFinished(result, webviewID, requestID);
+            webviewJNI.onEvalFinished(result, webviewID, generation, requestID);
         }
     }
 
     private static class CustomWebChromeClient extends WebChromeClient {
         private WebViewJNI webviewJNI;
         private int webviewID;
+        private final long generation;
         private int requestID;
 
-        public CustomWebChromeClient(WebViewJNI webviewJNI, int webview_id) {
+        public CustomWebChromeClient(WebViewJNI webviewJNI, int webview_id, long generation) {
             this.webviewJNI = webviewJNI;
             this.webviewID = webview_id;
+            this.generation = generation;
             reset(-1);
         }
 
@@ -235,7 +239,7 @@ public class WebViewJNI {
         public boolean onConsoleMessage(ConsoleMessage msg) {
             if( msg.messageLevel() == ConsoleMessage.MessageLevel.ERROR )
             {
-                webviewJNI.onEvalFailed(String.format("js:%d: %s", msg.lineNumber(), msg.message()), webviewID, requestID);
+                webviewJNI.onEvalFailed(String.format("js:%d: %s", msg.lineNumber(), msg.message()), webviewID, generation, requestID);
                 return true;
             }
             return false;
@@ -260,7 +264,7 @@ public class WebViewJNI {
         this.displayCutout = displayCutout;
     }
 
-    private WebViewInfo createView(Activity activity, int webview_id)
+    private WebViewInfo createView(Activity activity, int webview_id, long generation)
     {
         WebViewInfo info = new WebViewInfo();
         info.webviewID = webview_id;
@@ -284,10 +288,10 @@ public class WebViewJNI {
 
         info.webview.requestFocusFromTouch();
 
-        info.webviewChromeClient = new CustomWebChromeClient(WebViewJNI.this, webview_id);
+        info.webviewChromeClient = new CustomWebChromeClient(WebViewJNI.this, webview_id, generation);
         info.webview.setWebChromeClient(info.webviewChromeClient);
 
-        info.webviewClient = new CustomWebViewClient(activity, WebViewJNI.this, webview_id);
+        info.webviewClient = new CustomWebViewClient(activity, WebViewJNI.this, webview_id, generation);
         info.webview.setWebViewClient(info.webviewClient);
 
         WebSettings webSettings = info.webview.getSettings();
@@ -377,11 +381,11 @@ public class WebViewJNI {
         }
     }
 
-    public void create(final int webview_id) {
+    public void create(final int webview_id, final long generation) {
         this.activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                WebViewJNI.this.infos[webview_id] = createView(WebViewJNI.this.activity, webview_id);
+                WebViewJNI.this.infos[webview_id] = createView(WebViewJNI.this.activity, webview_id, generation);
             }
         });
     }

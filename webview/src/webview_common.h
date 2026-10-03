@@ -21,8 +21,9 @@ enum CallbackResult
 struct WebViewInfo
 {
     dmScript::LuaCallbackInfo* m_Callback;
+    uint64_t                  m_Generation;
 
-    WebViewInfo() : m_Callback(0) {}
+    WebViewInfo() : m_Callback(0), m_Generation(0) {}
 };
 
 struct RequestInfo
@@ -36,6 +37,7 @@ struct RequestInfo
 struct CallbackInfo
 {
     WebViewInfo*    m_Info;
+    uint64_t        m_Generation;
     int             m_WebViewID;
     int             m_RequestID;
     CallbackResult  m_Type;
@@ -44,6 +46,7 @@ struct CallbackInfo
 
     CallbackInfo()
     : m_Info(0)
+    , m_Generation(0)
     , m_WebViewID(0)
     , m_RequestID(0)
     , m_Type(CALLBACK_RESULT_URL_OK)
@@ -54,6 +57,7 @@ struct CallbackInfo
 
 void RunCallback(CallbackInfo* cbinfo);
 
+void CreateWebViewInfo(WebViewInfo* info, lua_State* L, int callback_index);
 void ClearWebViewInfo(WebViewInfo* info);
 
 int Platform_Create(lua_State* L, dmWebView::WebViewInfo* info);

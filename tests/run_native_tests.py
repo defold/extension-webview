@@ -19,15 +19,20 @@ sdk = Path(args.defold_home).resolve()
 root = Path(__file__).resolve().parents[1]
 host = "arm64-macos" if platform.machine() == "arm64" else "x86_64-macos"
 with tempfile.TemporaryDirectory(prefix="webview-tests-") as directory:
-    executable = Path(directory) / "test_callbacks"
-    subprocess.run([
+    common_flags = [
         "clang++", "-std=c++11", "-g", "-fsanitize=address,undefined",
         "-fno-omit-frame-pointer", "-Wl,-dead_strip", "-Wno-nontrivial-memcall",
         "-DDM_PLATFORM_OSX", '-DDLIB_LOG_DOMAIN="WEBVIEW_TEST"',
         "-I" + str(sdk / "sdk/include"), "-I" + str(sdk / "include"),
         "-I" + str(root / "webview/src"),
-        str(root / "tests/test_callbacks.cpp"), str(root / "webview/src/webview_common.cpp"),
         "-L" + str(sdk / "lib" / host), "-lscript", "-llua", "-ldlib",
-        "-lprofile_null", "-lddf", "-framework", "CoreFoundation", "-o", str(executable),
-    ], check=True)
-    subprocess.run([str(executable)], check=True)
+        "-lprofile_null", "-lddf", "-framework", "CoreFoundation",
+    ]
+    for name, sources, flags in [
+        ("test_callbacks", ["tests/test_callbacks.cpp", "webview/src/webview_common.cpp"], []),
+        ("test_darwin", ["tests/test_darwin.mm"], ["-framework", "WebKit", "-framework", "AppKit"]),
+    ]:
+        executable = Path(directory) / name
+        subprocess.run(common_flags + [str(root / source) for source in sources] +
+                       flags + ["-o", str(executable)], check=True)
+        subprocess.run([str(executable)], check=True)
