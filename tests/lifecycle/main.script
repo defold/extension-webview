@@ -1,0 +1,62 @@
+-- Bundle this project with the local webview directory to exercise native teardown.
+local function destroy(record)
+    if not record.dead then
+        record.dead = true
+        assert(webview.destroy(record.id) == 0)
+    end
+end
+
+local function create(self, close_in_callback)
+    self.serial = self.serial + 1
+    local record = { token = "webview-lifetime-" .. self.serial }
+    record.id = webview.create(function(_, id, request, event, data)
+        assert(not record.dead, "callback delivered after destruction")
+        if data.result then
+            local token = data.result:match("webview%-lifetime%-%d+")
+            assert(not token or token == record.token, "event delivered to a replacement view")
+        end
+        if close_in_callback then
+            record.id = id
+            destroy(record)
+            self.closed_in_callback = true
+        end
+        return true
+    end)
+    assert(record.id >= 0)
+    local html = "<html><body>WebView lifecycle test<script>" ..
+        "setInterval(function(){console.error('" .. record.token .. "')},10);" ..
+        "</script></body></html>"
+    webview.open_raw(record.id, html, { hidden = self.serial % 2 == 0, transparent = false })
+    if not record.dead then
+        webview.eval(record.id, "'" .. record.token .. "'")
+    end
+    return record
+end
+
+function init(self)
+    assert(webview, "run on Android, iOS, or macOS with the local extension")
+    -- A view that was never attached to a window must also be safe to destroy.
+    local unseen = webview.create(function() error("unexpected callback for unopened view") end)
+    assert(unseen >= 0 and webview.destroy(unseen) == 0)
+
+    self.serial = 0
+    self.current = create(self, false)
+    self.loop = timer.delay(0.1, true, function()
+        destroy(self.current)
+        if self.serial < 20 then
+            self.current = create(self, false)
+        else
+            timer.cancel(self.loop)
+            self.current = create(self, true)
+            timer.delay(5, false, function()
+                assert(self.closed_in_callback, "no callback received before timeout")
+                print("WebView lifecycle regression passed")
+                sys.exit(0)
+            end)
+        end
+    end)
+end
+
+function final(self)
+    if self.current then destroy(self.current) end
+end

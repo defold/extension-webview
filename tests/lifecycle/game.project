@@ -1,0 +1,21 @@
+[project]
+title = WebView lifecycle regression
+
+[bootstrap]
+main_collection = /main.collectionc
+
+[input]
+game_binding = /game.input_bindingc
+
+[display]
+width = 320
+height = 480
+
+[script]
+shared_state = 1
+
+[android]
+package = com.defold.webview.lifecycle
+
+[ios]
+bundle_identifier = com.defold.webview.lifecycle

@@ -46,19 +46,22 @@ public class WebViewJNI {
     public static final String JS_NAMESPACE = "defold";
 
     private Activity activity;
-    private static WebViewInfo[] infos;
+    private final WebViewInfo[] infos;
     private boolean immersiveMode = false;
     private boolean displayCutout = false;
 
-    public native void onPageLoading(String url, int webview_id, int request_id);
-    public native void onPageFinished(String url, int webview_id, int request_id);
-    public native void onReceivedError(String url, int webview_id, int request_id, String errorMessage);
-    public native void onEvalFinished(String result, int webview_id, int request_id);
-    public native void onEvalFailed(String errorMessage, int webview_id, int request_id);
+    public native void onPageLoading(String url, int webview_id, long generation, int request_id);
+    public native void onPageFinished(String url, int webview_id, long generation, int request_id);
+    public native void onReceivedError(String url, int webview_id, long generation, int request_id, String errorMessage);
+    public native void onEvalFinished(String result, int webview_id, long generation, int request_id);
+    public native void onEvalFailed(String errorMessage, int webview_id, long generation, int request_id);
 
     private static class CustomWebViewClient extends WebViewClient {
         public Activity activity;
         public int webviewID;
+        private final long generation;
+        // JavaScript interface calls arrive on a WebView background thread.
+        private volatile boolean destroyed;
         public int requestID;
         private String continueLoadingUrl;
         private WebViewJNI webviewJNI;
@@ -70,11 +73,12 @@ public class WebViewJNI {
         // This guard variable helps to avoid propagating the onPageFinished calls in that case
         private boolean hasError;
 
-        public CustomWebViewClient(Activity activity, WebViewJNI webviewJNI, int webview_id) {
+        public CustomWebViewClient(Activity activity, WebViewJNI webviewJNI, int webview_id, long generation) {
             super();
             this.activity = activity;
             this.webviewJNI = webviewJNI;
             this.webviewID = webview_id;
+            this.generation = generation;
             PACKAGE_NAME = activity.getApplicationContext().getPackageName();
             reset(-1);
         }
@@ -86,6 +90,10 @@ public class WebViewJNI {
             else {
                 extraHeaders.put(header, value);
             }
+        }
+
+        public void destroy() {
+            destroyed = true;
         }
 
         public void clearHeaders() {
@@ -122,6 +130,7 @@ public class WebViewJNI {
 
         @Override
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+            if (destroyed) return null;
             final String method = request.getMethod();
             final String url = request.getUrl().toString();
             String ext = MimeTypeMap.getFileExtensionFromUrl(url);
@@ -152,6 +161,7 @@ public class WebViewJNI {
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
+            if (destroyed) return true;
             if( url.startsWith(PACKAGE_NAME) )
             {
                 // Try to find an app that can open the url scheme,
@@ -174,23 +184,25 @@ public class WebViewJNI {
             }
             // block the page from loading and ask the client if it should load
             // or not
-            webviewJNI.onPageLoading(url, webviewID, requestID);
+            webviewJNI.onPageLoading(url, webviewID, generation, requestID);
             return true;
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
+            if (destroyed) return;
             // NOTE! this callback will be called TWICE for errors, see comment above
             // NOTE! this callback will be called once when initially blocked in
             // shouldOverrideUrlLoading and then once more if allowed to load
             if (!this.hasError && shouldContinueLoadingUrl(url)) {
                 continueLoadingUrl = null;
-                webviewJNI.onPageFinished(url, webviewID, requestID);
+                webviewJNI.onPageFinished(url, webviewID, generation, requestID);
             }
         }
 
         @Override
         public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            if (destroyed) return;
             if (errorCode == WebViewClient.ERROR_UNSUPPORTED_SCHEME) {
                 // Try to find an app that can open the url scheme,
                 // otherwise continue as usual error.
@@ -205,24 +217,29 @@ public class WebViewJNI {
 
             if (!this.hasError) {
                 this.hasError = true;
-                webviewJNI.onReceivedError(failingUrl, webviewID, requestID, description);
+                webviewJNI.onReceivedError(failingUrl, webviewID, generation, requestID, description);
             }
         }
 
         @JavascriptInterface
         public void returnResultToJava(String result) {
-            webviewJNI.onEvalFinished(result, webviewID, requestID);
+            if (!destroyed) {
+                webviewJNI.onEvalFinished(result, webviewID, generation, requestID);
+            }
         }
     }
 
     private static class CustomWebChromeClient extends WebChromeClient {
         private WebViewJNI webviewJNI;
         private int webviewID;
+        private final long generation;
+        private volatile boolean destroyed;
         private int requestID;
 
-        public CustomWebChromeClient(WebViewJNI webviewJNI, int webview_id) {
+        public CustomWebChromeClient(WebViewJNI webviewJNI, int webview_id, long generation) {
             this.webviewJNI = webviewJNI;
             this.webviewID = webview_id;
+            this.generation = generation;
             reset(-1);
         }
 
@@ -231,11 +248,16 @@ public class WebViewJNI {
             this.requestID = request_id;
         }
 
+        public void destroy() {
+            destroyed = true;
+        }
+
         @Override
         public boolean onConsoleMessage(ConsoleMessage msg) {
+            if (destroyed) return false;
             if( msg.messageLevel() == ConsoleMessage.MessageLevel.ERROR )
             {
-                webviewJNI.onEvalFailed(String.format("js:%d: %s", msg.lineNumber(), msg.message()), webviewID, requestID);
+                webviewJNI.onEvalFailed(String.format("js:%d: %s", msg.lineNumber(), msg.message()), webviewID, generation, requestID);
                 return true;
             }
             return false;
@@ -260,7 +282,7 @@ public class WebViewJNI {
         this.displayCutout = displayCutout;
     }
 
-    private WebViewInfo createView(Activity activity, int webview_id)
+    private WebViewInfo createView(Activity activity, int webview_id, long generation)
     {
         WebViewInfo info = new WebViewInfo();
         info.webviewID = webview_id;
@@ -284,10 +306,10 @@ public class WebViewJNI {
 
         info.webview.requestFocusFromTouch();
 
-        info.webviewChromeClient = new CustomWebChromeClient(WebViewJNI.this, webview_id);
+        info.webviewChromeClient = new CustomWebChromeClient(WebViewJNI.this, webview_id, generation);
         info.webview.setWebChromeClient(info.webviewChromeClient);
 
-        info.webviewClient = new CustomWebViewClient(activity, WebViewJNI.this, webview_id);
+        info.webviewClient = new CustomWebViewClient(activity, WebViewJNI.this, webview_id, generation);
         info.webview.setWebViewClient(info.webviewClient);
 
         WebSettings webSettings = info.webview.getSettings();
@@ -377,11 +399,11 @@ public class WebViewJNI {
         }
     }
 
-    public void create(final int webview_id) {
+    public void create(final int webview_id, final long generation) {
         this.activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                WebViewJNI.this.infos[webview_id] = createView(WebViewJNI.this.activity, webview_id);
+                WebViewJNI.this.infos[webview_id] = createView(WebViewJNI.this.activity, webview_id, generation);
             }
         });
     }
@@ -390,17 +412,31 @@ public class WebViewJNI {
         this.activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if( WebViewJNI.this.infos[webview_id] != null )
-                {
-                    if( WebViewJNI.this.infos[webview_id].layout != null )
-                    {
-                        WindowManager wm = activity.getWindowManager();
-                        wm.removeView(WebViewJNI.this.infos[webview_id].layout);
-                    }
-                    WebViewJNI.this.infos[webview_id].layout = null;
-                    WebViewJNI.this.infos[webview_id].webview = null;
-                    WebViewJNI.this.infos[webview_id] = null;
+                WebViewInfo info = WebViewJNI.this.infos[webview_id];
+                if (info == null) return;
+                WebViewJNI.this.infos[webview_id] = null;
+
+                info.webviewClient.destroy();
+                info.webviewChromeClient.destroy();
+                WebView view = info.webview;
+                view.removeJavascriptInterface(JS_NAMESPACE);
+                view.setWebChromeClient(null);
+                view.setWebViewClient(null);
+                view.stopLoading();
+
+                ViewGroup parent = (ViewGroup)view.getParent();
+                if (parent != null) {
+                    parent.removeView(view);
                 }
+                // A newly created or hidden view may never have been added to the window.
+                if (info.layout.getParent() != null) {
+                    activity.getWindowManager().removeView(info.layout);
+                }
+                view.destroy();
+                info.webview = null;
+                info.layout = null;
+                info.webviewClient = null;
+                info.webviewChromeClient = null;
             }
         });
     }

@@ -32,6 +32,7 @@ struct WebViewCommand
         memset(this, 0, sizeof(WebViewCommand));
     }
     CommandType m_Type;
+    uint64_t    m_Generation;
     int         m_WebViewID;
     int         m_RequestID;
     void*       m_Data;
@@ -71,15 +72,22 @@ struct WebViewExtensionState
     jmethodID               m_AddHeader;
     jmethodID               m_ClearHeaders;
     dmMutex::HMutex         m_Mutex;
+    bool                    m_AcceptCommands;
     dmArray<WebViewCommand> m_CmdQueue;
 };
 
 WebViewExtensionState g_WebView;
 
+static void FreeCommand(const WebViewCommand& cmd)
+{
+    free((void*)cmd.m_Url);
+    free(cmd.m_Data);
+}
+
 namespace dmWebView
 {
 
-#define CHECK_WEBVIEW_AND_RETURN() if( webview_id >= MAX_NUM_WEBVIEWS || webview_id < 0 ) { dmLogError("%s: Invalid webview_id: %d", __FUNCTION__, webview_id); return -1; }
+#define CHECK_WEBVIEW_AND_RETURN() if( webview_id >= MAX_NUM_WEBVIEWS || webview_id < 0 || !g_WebView.m_Used[webview_id] ) { dmLogError("%s: Invalid webview_id: %d", __FUNCTION__, webview_id); return -1; }
 
 int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
 {
@@ -105,7 +113,7 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
 
     dmAndroid::ThreadAttacher threadAttacher;
     JNIEnv* env = threadAttacher.GetEnv();
-    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_Create, webview_id);
+    env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_Create, webview_id, (jlong)_info->m_Generation);
 
     return webview_id;
 }
@@ -113,18 +121,17 @@ int Platform_Create(lua_State* L, dmWebView::WebViewInfo* _info)
 static int DestroyWebView(int webview_id)
 {
     CHECK_WEBVIEW_AND_RETURN();
+    ClearWebViewInfo(&g_WebView.m_Info[webview_id]);
+    g_WebView.m_Used[webview_id] = false;
     dmAndroid::ThreadAttacher threadAttacher;
     JNIEnv* env = threadAttacher.GetEnv();
     env->CallVoidMethod(g_WebView.m_WebViewJNI, g_WebView.m_Destroy, webview_id);
-    ClearWebViewInfo(&g_WebView.m_Info[webview_id]);
-    g_WebView.m_Used[webview_id] = false;
     return 0;
 }
 
 int Platform_Destroy(lua_State* L, int webview_id)
 {
-    DestroyWebView(webview_id);
-    return 0;
+    return DestroyWebView(webview_id);
 }
 
 int Platform_Open(lua_State* L, int webview_id, const char* url, dmWebView::RequestInfo* options)
@@ -254,7 +261,17 @@ static char* CopyString(JNIEnv* env, jstring s)
 
 static void QueueCommand(WebViewCommand* cmd)
 {
+    if (!g_WebView.m_Mutex)
+    {
+        FreeCommand(*cmd);
+        return;
+    }
     DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
+    if (!g_WebView.m_AcceptCommands)
+    {
+        FreeCommand(*cmd);
+        return;
+    }
     if (g_WebView.m_CmdQueue.Full())
     {
         g_WebView.m_CmdQueue.OffsetCapacity(8);
@@ -262,59 +279,78 @@ static void QueueCommand(WebViewCommand* cmd)
     g_WebView.m_CmdQueue.Push(*cmd);
 }
 
+static void FinalizeCommands()
+{
+    if (!g_WebView.m_Mutex)
+        return;
+
+    dmArray<WebViewCommand> pending;
+    {
+        DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
+        g_WebView.m_AcceptCommands = false;
+        pending.Swap(g_WebView.m_CmdQueue);
+    }
+    for (uint32_t i = 0; i != pending.Size(); ++i)
+        FreeCommand(pending[i]);
+}
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onPageFinished(JNIEnv* env, jobject, jstring url, jint webview_id, jint request_id)
+JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onPageFinished(JNIEnv* env, jobject, jstring url, jint webview_id, jlong generation, jint request_id)
 {
     WebViewCommand cmd;
     cmd.m_Type = CMD_LOAD_OK;
     cmd.m_WebViewID = webview_id;
+    cmd.m_Generation = (uint64_t)generation;
     cmd.m_RequestID = request_id;
     cmd.m_Url = CopyString(env, url);
     QueueCommand(&cmd);
 }
 
-JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onReceivedError(JNIEnv* env, jobject, jstring url, jint webview_id, jint request_id, jstring errorMessage)
+JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onReceivedError(JNIEnv* env, jobject, jstring url, jint webview_id, jlong generation, jint request_id, jstring errorMessage)
 {
     WebViewCommand cmd;
     cmd.m_Type = CMD_LOAD_ERROR;
     cmd.m_WebViewID = webview_id;
+    cmd.m_Generation = (uint64_t)generation;
     cmd.m_RequestID = request_id;
     cmd.m_Url = CopyString(env, url);
     cmd.m_Data = CopyString(env, errorMessage);
     QueueCommand(&cmd);
 }
 
-JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onEvalFinished(JNIEnv* env, jobject, jstring result, jint webview_id, jint request_id)
+JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onEvalFinished(JNIEnv* env, jobject, jstring result, jint webview_id, jlong generation, jint request_id)
 {
     WebViewCommand cmd;
     cmd.m_Type = CMD_EVAL_OK;
     cmd.m_WebViewID = webview_id;
+    cmd.m_Generation = (uint64_t)generation;
     cmd.m_RequestID = request_id;
     cmd.m_Url = 0;
     cmd.m_Data = CopyString(env, result);
     QueueCommand(&cmd);
 }
 
-JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onEvalFailed(JNIEnv* env, jobject, jstring error, jint webview_id, jint request_id)
+JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onEvalFailed(JNIEnv* env, jobject, jstring error, jint webview_id, jlong generation, jint request_id)
 {
     WebViewCommand cmd;
     cmd.m_Type = CMD_EVAL_ERROR;
     cmd.m_WebViewID = webview_id;
+    cmd.m_Generation = (uint64_t)generation;
     cmd.m_RequestID = request_id;
     cmd.m_Url = 0;
     cmd.m_Data = CopyString(env, error);
     QueueCommand(&cmd);
 }
 
-JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onPageLoading(JNIEnv* env, jobject, jstring url, jint webview_id, jint request_id)
+JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onPageLoading(JNIEnv* env, jobject, jstring url, jint webview_id, jlong generation, jint request_id)
 {
     WebViewCommand cmd;
     cmd.m_Type = CMD_LOADING;
     cmd.m_WebViewID = webview_id;
+    cmd.m_Generation = (uint64_t)generation;
     cmd.m_RequestID = request_id;
     cmd.m_Url = CopyString(env, url);
     QueueCommand(&cmd);
@@ -326,22 +362,27 @@ JNIEXPORT void JNICALL Java_com_defold_webview_WebViewJNI_onPageLoading(JNIEnv* 
 
 dmExtension::Result Platform_Update(dmExtension::Params* params)
 {
-    if (g_WebView.m_CmdQueue.Empty())
-    {
-        return dmExtension::RESULT_OK; // avoid a lock (~300us on iPhone 4s)
-    }
-
     dmArray<WebViewCommand> tmp;
     {
         DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
+        if (!g_WebView.m_AcceptCommands || g_WebView.m_CmdQueue.Empty())
+            return dmExtension::RESULT_OK;
         tmp.Swap(g_WebView.m_CmdQueue);
     }
 
     for (uint32_t i=0; i != tmp.Size(); ++i)
     {
         const WebViewCommand& cmd = tmp[i];
+        if (cmd.m_WebViewID < 0 || cmd.m_WebViewID >= MAX_NUM_WEBVIEWS ||
+            !g_WebView.m_Used[cmd.m_WebViewID] ||
+            cmd.m_Generation != g_WebView.m_Info[cmd.m_WebViewID].m_Generation)
+        {
+            FreeCommand(cmd);
+            continue;
+        }
 
         dmWebView::CallbackInfo cbinfo;
+        cbinfo.m_Generation = cmd.m_Generation;
         switch (cmd.m_Type)
         {
         case CMD_LOADING:
@@ -397,26 +438,25 @@ dmExtension::Result Platform_Update(dmExtension::Params* params)
         default:
             assert(false);
         }
-        if (cmd.m_Url) {
-            free((void*)cmd.m_Url);
-        }
-        if (cmd.m_Data) {
-            free(cmd.m_Data);
-        }
+        FreeCommand(cmd);
     }
     return dmExtension::RESULT_OK;
 }
 
 dmExtension::Result Platform_AppInitialize(dmExtension::AppParams* params)
 {
-    g_WebView.m_Mutex = dmMutex::New();
-    g_WebView.m_CmdQueue.SetCapacity(8);
+    if (!g_WebView.m_Mutex)
+        g_WebView.m_Mutex = dmMutex::New();
+    {
+        DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
+        g_WebView.m_CmdQueue.SetCapacity(8);
+    }
 
     dmAndroid::ThreadAttacher threadAttacher;
     JNIEnv* env = threadAttacher.GetEnv();
     jclass webview_class = dmAndroid::LoadClass(env, "com.defold.webview.WebViewJNI");
 
-    g_WebView.m_Create = env->GetMethodID(webview_class, "create", "(I)V");
+    g_WebView.m_Create = env->GetMethodID(webview_class, "create", "(IJ)V");
     g_WebView.m_Destroy = env->GetMethodID(webview_class, "destroy", "(I)V");
     g_WebView.m_Load = env->GetMethodID(webview_class, "load", "(Ljava/lang/String;IIII)V");
     g_WebView.m_LoadRaw = env->GetMethodID(webview_class, "loadRaw", "(Ljava/lang/String;IIII)V");
@@ -439,23 +479,28 @@ dmExtension::Result Platform_AppInitialize(dmExtension::AppParams* params)
 
 dmExtension::Result Platform_Initialize(dmExtension::Params* params)
 {
+    DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
+    g_WebView.m_AcceptCommands = true;
     return dmExtension::RESULT_OK;
 }
 
 dmExtension::Result Platform_AppFinalize(dmExtension::AppParams* params)
 {
+    FinalizeCommands();
     dmAndroid::ThreadAttacher threadAttacher;
     JNIEnv* env = threadAttacher.GetEnv();
     env->DeleteGlobalRef(g_WebView.m_WebViewJNI);
     g_WebView.m_WebViewJNI = NULL;
 
-    dmMutex::Delete(g_WebView.m_Mutex);
+    // Java callbacks already in flight can outlive finalization. Keep the mutex
+    // until process teardown so they can safely observe the closed queue.
 
     return dmExtension::RESULT_OK;
 }
 
 dmExtension::Result Platform_Finalize(dmExtension::Params* params)
 {
+    FinalizeCommands();
     for( int i = 0; i < dmWebView::MAX_NUM_WEBVIEWS; ++i )
     {
         if (g_WebView.m_Used[i]) {
@@ -463,15 +508,6 @@ dmExtension::Result Platform_Finalize(dmExtension::Params* params)
         }
     }
 
-    DM_MUTEX_SCOPED_LOCK(g_WebView.m_Mutex);
-    for (uint32_t i=0; i != g_WebView.m_CmdQueue.Size(); ++i)
-    {
-        const WebViewCommand& cmd = g_WebView.m_CmdQueue[i];
-        if (cmd.m_Url) {
-            free((void*)cmd.m_Url);
-        }
-    }
-    g_WebView.m_CmdQueue.SetSize(0);
     return dmExtension::RESULT_OK;
 }
 
